@@ -1,0 +1,59 @@
+# Global gitignore — covers editor artifacts, OS files, and dev tooling
+# Set with: git config --global core.excludesfile ~/.gitignore_global
+
+# Editor
+.nvim/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.*.local
+.envrc
+
+# Node
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Build artifacts
+dist/
+build/
+.next/
+.turbo/
+out/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+.uv/
+
+# Testing
+coverage/
+.nyc_output/
+*.lcov
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+.Spotlight-V100
+.Trashes
+
+# WSL artifacts
+*.Zone.Identifier

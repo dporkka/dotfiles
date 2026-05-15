@@ -1,0 +1,159 @@
+[user]
+	name = David Porkka
+	email = davidporkka@gmail.com
+	# signingkey = <your-gpg-key-id>
+
+[core]
+	editor = nvim
+	pager = delta
+	autocrlf = false
+	# WHY false: you're developing in Linux (WSL2). NEVER use true or auto —
+	# those corrupt files in Linux projects. Set this in Windows Git if needed.
+	eol = lf
+	whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+	excludesfile = ~/.gitignore_global
+	fsmonitor = true
+	# fsmonitor dramatically speeds up git status/add in large repos by
+	# using the OS file change notification API instead of walking the tree.
+	untrackedCache = true
+	# untrackedCache caches untracked file info to speed up status. Works
+	# well in Linux ext4 (your ~/code dir). Disable if you see issues.
+
+[init]
+	defaultBranch = main
+
+[pull]
+	rebase = true
+	# WHY: merge commits on pull create noise in history. Rebase keeps it linear.
+
+[push]
+	default = current
+	autoSetupRemote = true
+	# autoSetupRemote: sets upstream on first push automatically. No more
+	# "set upstream with --set-upstream" errors.
+
+[fetch]
+	prune = true
+	prunetags = true
+	# Automatically delete local tracking branches when remote is deleted.
+
+[rebase]
+	autoStash = true
+	# Stash uncommitted changes before rebase, re-apply after. Saves the
+	# frequent stash/rebase/pop dance.
+
+[merge]
+	tool = nvim
+	conflictstyle = zdiff3
+	# zdiff3 shows the common ancestor alongside both sides — much easier
+	# to understand what changed and why conflict happened.
+
+[diff]
+	tool = delta
+	algorithm = histogram
+	# histogram: better diff algorithm than Myers, fewer false positives
+	# on code diffs with repeated tokens.
+	colorMoved = default
+
+[delta]
+	navigate = true
+	light = false
+	line-numbers = true
+	side-by-side = false
+	syntax-theme = base16
+
+[interactive]
+	diffFilter = delta --color-only
+
+[alias]
+	# Status / info
+	s = status -sb
+	st = status
+	br = branch -vv
+	bra = branch -a
+	lg = log --oneline --graph --decorate --all
+	lgg = log --graph --all --pretty=format:'%C(auto)%h %ad %s%d %C(cyan)[%an]%Creset' --date=short
+	last = log -1 HEAD --stat
+	who = shortlog -sn --all
+	standup = log --since=yesterday --oneline --all --author
+
+	# Working
+	a = add
+	aa = add -A
+	ap = add -p
+	c = commit
+	ca = commit --amend --no-edit
+	cam = commit --amend
+	cm = commit -m
+	cp = cherry-pick
+	cpa = cherry-pick --abort
+	cpc = cherry-pick --continue
+
+	# Branches
+	co = checkout
+	cob = checkout -b
+	sw = switch
+	swc = switch -c
+
+	# Diffs
+	d = diff
+	ds = diff --staged
+	dw = diff --word-diff
+
+	# Stash
+	ss = stash
+	sp = stash pop
+	sl = stash list
+	sd = stash drop
+
+	# Remote
+	f = fetch --all --prune
+	pl = pull --rebase
+	ps = push
+	psf = push --force-with-lease
+
+	# Worktree
+	wt = worktree
+	wta = worktree add
+	wtl = worktree list
+	wtr = worktree remove
+
+	# Maintenance
+	cleanup = "!git branch --merged main | grep -v '\\*\\|main\\|master\\|develop' | xargs -r git branch -d"
+	undo = reset HEAD~1 --mixed
+	unstage = reset HEAD --
+	root = rev-parse --show-toplevel
+
+[credential]
+	helper = /usr/lib/git-core/git-credential-libsecret
+	# On WSL2, you can also use the Windows credential manager:
+	# helper = /mnt/c/Program\\ Files/Git/mingw64/bin/git-credential-manager.exe
+
+[gpg]
+	# format = ssh  # uncomment to use SSH keys for commit signing
+
+[tag]
+	sort = version:refname
+	# Sort tags semantically (v1.10 > v1.9)
+
+[rerere]
+	enabled = true
+	# rerere (Reuse Recorded Resolution): remembers how you resolved merge
+	# conflicts and re-applies the same resolution automatically. Huge time
+	# saver in long-running rebase/merge workflows.
+
+[help]
+	autocorrect = prompt
+	# Ask before running auto-corrected command.
+
+[url "git@github.com:"]
+	insteadOf = https://github.com/
+	# Push via SSH even when URL was cloned as HTTPS. Requires SSH key setup.
+	# Comment out if you prefer HTTPS with credential manager.
+
+[color]
+	ui = auto
+
+[column]
+	ui = auto
+	# Display branch list in columns when output is wide enough.

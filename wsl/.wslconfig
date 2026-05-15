@@ -1,0 +1,29 @@
+# ~/.wslconfig — lives at C:\Users\<YourWindowsUser>\.wslconfig
+# Copy this file there after editing. Requires WSL restart to take effect.
+#
+# WHY EACH SETTING:
+# memory      — WSL2 will greedily consume RAM. Cap it or Windows will page-thrash.
+#               10GB for 32GB host, 6GB for 16GB host, 4GB for 12GB.
+# processors  — Leave 2+ cores for Windows. 10-core box: give 8 to WSL.
+# swap        — WSL's swap lives on the Windows FS so disable it when possible;
+#               let Linux manage swap on its own disk. Set to 0 if you have 16GB+.
+# localhostForwarding — essential for accessing WSL services from Windows browser.
+# dnsTunneling        — fixes DNS resolution issues in corporate/VPN environments.
+# autoMemoryReclaim   — returns memory to Windows when Linux frees it. "gradual"
+#                       is safe; "dropcache" is aggressive (use only if RAM-constrained).
+# networkingMode      — "mirrored" (Win11 22H2+) mirrors Windows network interfaces
+#                       into WSL, enabling consistent IP, VPN compat, and IPv6.
+#                       Fall back to "nat" if VPN breaks.
+
+[wsl2]
+memory=8GB
+processors=8
+swap=0
+localhostForwarding=true
+
+[experimental]
+autoMemoryReclaim=gradual
+networkingMode=mirrored
+dnsTunneling=true
+firewall=true
+sparseVhd=true

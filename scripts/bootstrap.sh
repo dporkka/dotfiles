@@ -312,6 +312,20 @@ cp -n config/starship/starship.toml ~/.config/starship.toml 2>/dev/null || true
 success "Dotfiles linked"
 
 # ---------------------------------------------------------------------------
+# 15b. NEOVIM PLUGINS — deterministic install from lazy-lock.json
+# Lazy auto-installs the *latest* commits on first launch; `restore` pins every
+# plugin to the versions committed in lazy-lock.json for reproducible installs.
+# ---------------------------------------------------------------------------
+
+if command -v nvim &>/dev/null && [[ -f "$HOME/.config/nvim/lazy-lock.json" ]]; then
+  log "Installing Neovim plugins at locked versions..."
+  # `install` clones any missing plugins; `restore` checks them out to the lockfile
+  nvim --headless "+Lazy! install" "+Lazy! restore" +qa 2>/dev/null \
+    || warn "Neovim plugin restore had issues — open nvim and run ':Lazy restore'"
+  success "Neovim plugins installed from lazy-lock.json"
+fi
+
+# ---------------------------------------------------------------------------
 # 16. CHANGE DEFAULT SHELL TO ZSH
 # ---------------------------------------------------------------------------
 
@@ -352,7 +366,7 @@ echo "1. Copy wsl/.wslconfig to C:\\Users\\<YourUser>\\.wslconfig"
 echo "2. Copy wsl/wsl.conf to /etc/wsl.conf (already done if you ran as root)"
 echo "3. Restart WSL: wsl --shutdown (from PowerShell)"
 echo "4. Open a new terminal — zsh will be your shell"
-echo "5. Start nvim — LazyVim will install plugins automatically"
+echo "5. Start nvim — plugins are pinned via lazy-lock.json (run ':Lazy restore' to re-pin)"
 echo "6. In tmux, press prefix+I to install tmux plugins"
 echo "7. Run: gh auth login"
 echo ""

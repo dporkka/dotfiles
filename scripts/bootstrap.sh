@@ -272,7 +272,7 @@ mkdir -p ~/.config ~/.local/bin ~/.local/share ~/.cache
 cd "$DOTFILES_DIR"
 
 # Link individual config directories
-for dir in nvim tmux starship git; do
+for dir in nvim tmux starship git ghostty; do
   if [[ -d "config/$dir" ]]; then
     mkdir -p "$HOME/.config/$dir"
     # Use rsync for merging (safer than stow for existing configs)

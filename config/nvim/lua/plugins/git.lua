@@ -78,9 +78,7 @@ return {
       { "<leader>gG", "<cmd>LazyGitCurrentFile<cr>", desc = "LazyGit (current file)" },
       { "<leader>gl", "<cmd>LazyGitFilter<cr>", desc = "LazyGit log" },
     },
-    config = function()
-      require("telescope").load_extension("lazygit")
-    end,
+    config = function() end,
   },
 
   -- ---------------------------------------------------------------------------

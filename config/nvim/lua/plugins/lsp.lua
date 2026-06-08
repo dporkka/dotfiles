@@ -23,9 +23,11 @@ return {
         "eslint_d",
         "shellcheck",
 
-        -- Other tools
-        "delve",     -- Go debugger (optional)
-        "codelldb",  -- C/Rust debugger (optional)
+        -- Debug adapters
+        "delve",            -- Go
+        "codelldb",         -- C/Rust
+        "js-debug-adapter", -- TypeScript/JavaScript/Node/Next.js
+        "debugpy",          -- Python
       },
     },
   },

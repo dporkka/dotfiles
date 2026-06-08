@@ -5,7 +5,7 @@
 return {
   -- ---------------------------------------------------------------------------
   -- NVIM-DBTUI / DADBOD — PostgreSQL query runner inside Neovim
-  -- WHY: run PostGIS queries without leaving the editor. Connect to any DB.
+  -- Key: <leader>D (moved off <leader>db to free the d prefix for DAP)
   -- ---------------------------------------------------------------------------
   {
     "kristijanhusak/vim-dadbod-ui",
@@ -16,15 +16,13 @@ return {
       { "kristijanhusak/vim-dadbod-completion", ft = { "sql", "mysql", "plsql" }, lazy = true },
     },
     keys = {
-      { "<leader>db", "<cmd>DBUIToggle<cr>", desc = "Database UI" },
+      { "<leader>D", "<cmd>DBUIToggle<cr>", desc = "Database UI" },
     },
     init = function()
       vim.g.db_ui_save_location = vim.fn.stdpath("data") .. "/db_ui"
       vim.g.db_ui_show_database_icon = true
       vim.g.db_ui_use_nerd_fonts = true
       vim.g.db_ui_execute_on_save = false
-      -- Configure DB connections via environment variables or:
-      -- ~/.local/share/nvim/db_ui/connections.json
     end,
   },
 
@@ -188,21 +186,131 @@ return {
   },
 
   -- ---------------------------------------------------------------------------
-  -- SPECTRE — project-wide search and replace
-  -- WHY: when you need to rename a function/type across an entire monorepo,
-  -- spectre gives you a live preview before committing the replace.
+  -- GRUG-FAR — project-wide search and replace (replaces spectre)
+  -- WHY over spectre: simpler mental model, live preview, ripgrep native.
   -- ---------------------------------------------------------------------------
   {
-    "nvim-pack/nvim-spectre",
+    "MagicDuck/grug-far.nvim",
     lazy = true,
-    cmd = "Spectre",
+    cmd = "GrugFar",
     keys = {
-      { "<leader>sr", function() require("spectre").open() end, desc = "Search/replace (Spectre)" },
-      { "<leader>sw", function() require("spectre").open_visual({ select_word = true }) end, mode = "n", desc = "Search current word" },
+      { "<leader>sr", "<cmd>GrugFar<cr>", desc = "Search/replace (grug-far)" },
+      {
+        "<leader>sw",
+        function()
+          require("grug-far").open({ prefills = { search = vim.fn.expand("<cword>") } })
+        end,
+        desc = "Search current word",
+      },
+      {
+        "<leader>sw",
+        function()
+          require("grug-far").with_visual_selection()
+        end,
+        mode = "v",
+        desc = "Search selection",
+      },
     },
     opts = {
-      open_cmd = "noswapfile vnew",
+      engine = "ripgrep",
+      headerMaxWidth = 80,
+      windowCreationCommand = "vsplit",
     },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- AERIAL — code outline / symbol tree (Cursor's outline panel equivalent)
+  -- ---------------------------------------------------------------------------
+  {
+    "stevearc/aerial.nvim",
+    lazy = true,
+    cmd = { "AerialToggle", "AerialNavToggle" },
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    keys = {
+      { "<leader>co", "<cmd>AerialToggle!<cr>",   desc = "Symbol outline (Aerial)" },
+      { "<leader>cO", "<cmd>AerialNavToggle<cr>", desc = "Symbol nav (Aerial)" },
+    },
+    opts = {
+      backends   = { "lsp", "treesitter", "markdown", "man" },
+      attach_mode = "global",
+      show_guides = true,
+      layout = {
+        max_width    = { 40, 0.2 },
+        min_width    = 20,
+        default_direction = "prefer_right",
+      },
+      guides = {
+        mid_item   = "├─",
+        last_item  = "└─",
+        nested_top = "│ ",
+        whitespace = "  ",
+      },
+      filter_kind     = false,
+      highlight_on_hover = true,
+      autojump        = false,
+    },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- GLANCE — peek definitions/references in a floating window (like Cursor)
+  -- gpd/gpr/gpi/gpt = peek definition/references/implementations/typedef
+  -- ---------------------------------------------------------------------------
+  {
+    "dnlhc/glance.nvim",
+    lazy = true,
+    cmd = "Glance",
+    keys = {
+      { "gpd", "<cmd>Glance definitions<cr>",      desc = "Peek definition" },
+      { "gpr", "<cmd>Glance references<cr>",       desc = "Peek references" },
+      { "gpi", "<cmd>Glance implementations<cr>",  desc = "Peek implementations" },
+      { "gpt", "<cmd>Glance type_definitions<cr>", desc = "Peek type definitions" },
+    },
+    config = function()
+      require("glance").setup({
+        height       = 18,
+        border       = { enable = true },
+        theme        = { enable = true, mode = "auto" },
+        list         = { position = "right", width = 0.33 },
+        preview_win_opts = { number = true, wrap = false },
+        winbar       = { enable = true },
+        folds        = { fold_closed = "", fold_open = "", folded = true },
+      })
+    end,
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- INC-RENAME — live rename preview (type the new name, see it applied live)
+  -- Replaces the default LSP rename prompt with an in-place inline rename.
+  -- ---------------------------------------------------------------------------
+  {
+    "smjonas/inc-rename.nvim",
+    cmd = "IncRename",
+    keys = {
+      {
+        "<leader>cr",
+        function() return ":IncRename " .. vim.fn.expand("<cword>") end,
+        expr = true,
+        desc = "Rename (inc-rename)",
+      },
+    },
+    opts = {},
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- REFACTORING — extract function/variable, inline variable (treesitter-aware)
+  -- ---------------------------------------------------------------------------
+  {
+    "ThePrimeagen/refactoring.nvim",
+    lazy = true,
+    dependencies = { "nvim-lua/plenary.nvim", "nvim-treesitter/nvim-treesitter" },
+    keys = {
+      { "<leader>re", function() require("refactoring").refactor("Extract Function") end,         mode = "v", desc = "Extract function" },
+      { "<leader>rv", function() require("refactoring").refactor("Extract Variable") end,         mode = "v", desc = "Extract variable" },
+      { "<leader>ri", function() require("refactoring").refactor("Inline Variable") end, mode = { "n", "v" }, desc = "Inline variable" },
+      { "<leader>rE", function() require("refactoring").refactor("Extract Function To File") end, mode = "v", desc = "Extract to file" },
+      { "<leader>rr", function() require("refactoring").select_refactor() end, mode = { "n", "v" }, desc = "Select refactor" },
+    },
+    opts = {},
   },
 
   -- ---------------------------------------------------------------------------

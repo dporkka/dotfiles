@@ -4,6 +4,27 @@
 
 return {
   -- ---------------------------------------------------------------------------
+  -- ZELLIJ-NAV — seamless Ctrl+hjkl navigation across Neovim splits and Zellij panes
+  -- Only active inside a Zellij session (ZELLIJ env var set). Calls
+  -- `zellij action move-focus` when at the edge of Neovim's window layout.
+  -- ---------------------------------------------------------------------------
+  {
+    "swaits/zellij-nav.nvim",
+    lazy = true,
+    event = "VeryLazy",
+    cond = function()
+      return vim.env.ZELLIJ ~= nil
+    end,
+    keys = {
+      { "<C-h>", "<cmd>ZellijNavigateLeftTab<cr>",  desc = "Navigate left (Neovim/Zellij)" },
+      { "<C-j>", "<cmd>ZellijNavigateDown<cr>",     desc = "Navigate down (Neovim/Zellij)" },
+      { "<C-k>", "<cmd>ZellijNavigateUp<cr>",       desc = "Navigate up (Neovim/Zellij)" },
+      { "<C-l>", "<cmd>ZellijNavigateRightTab<cr>", desc = "Navigate right (Neovim/Zellij)" },
+    },
+    opts = {},
+  },
+
+  -- ---------------------------------------------------------------------------
   -- TOGGLETERM — persistent terminals in Neovim
   -- WHY: run claude/aider/tests in a persistent terminal that you can hide/show
   -- without losing the process. Critical for AI agent workflows.

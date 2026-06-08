@@ -98,7 +98,7 @@ map("n", "]d", vim.diagnostic.goto_next, { desc = "Next diagnostic" })
 -- ---------------------------------------------------------------------------
 
 map("n", "<leader>gg", "<cmd>LazyGit<cr>", { desc = "LazyGit" })
-map("n", "<leader>gw", "<cmd>lua require('telescope.builtin').git_status()<cr>", { desc = "Git status" })
+map("n", "<leader>gw", "<cmd>FzfLua git_status<cr>", { desc = "Git status" })
 
 -- ---------------------------------------------------------------------------
 -- TERMINAL

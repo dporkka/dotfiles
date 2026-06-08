@@ -19,6 +19,7 @@ export PAGER=less
 export LESS='-R --quit-if-one-screen --no-init'
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
+export COLORTERM=truecolor  # 24-bit color for Neovim inside Zellij/tmux
 
 # XDG base dirs — many tools respect these; centralizes config
 export XDG_CONFIG_HOME="$HOME/.config"
@@ -46,6 +47,14 @@ path=(
 )
 
 export PATH
+
+# ---------------------------------------------------------------------------
+# API KEYS — AI tooling
+# ---------------------------------------------------------------------------
+
+# Required by avante.nvim for Claude provider
+# Get key at: https://console.anthropic.com/settings/keys
+# export ANTHROPIC_API_KEY="sk-ant-..."
 
 # ---------------------------------------------------------------------------
 # WSL-SPECIFIC: open URLs in Windows browser
@@ -251,6 +260,13 @@ alias ta='tmux attach -t'
 alias tls='tmux ls'
 alias tn='tmux new -s'
 alias tk='tmux kill-session -t'
+
+# Zellij
+alias z='zellij'
+alias za='zellij attach'
+alias zls='zellij list-sessions'
+alias zk='zellij kill-session'
+alias zka='zellij kill-all-sessions'
 
 # Docker
 alias d='docker'

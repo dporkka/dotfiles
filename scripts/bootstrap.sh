@@ -240,7 +240,20 @@ else
 fi
 
 # ---------------------------------------------------------------------------
-# 14. INOTIFY LIMITS — critical for Next.js / Vite file watching
+# 14. LOCALE — generate en_US.UTF-8 (prevents Ghostty/GTK locale warnings)
+# ---------------------------------------------------------------------------
+
+log "Configuring locale..."
+if ! locale -a 2>/dev/null | grep -q "en_US.utf8"; then
+  sudo locale-gen en_US.UTF-8
+  sudo update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+  success "Locale en_US.UTF-8 generated"
+else
+  success "Locale already configured"
+fi
+
+# ---------------------------------------------------------------------------
+# 14b. INOTIFY LIMITS — critical for Next.js / Vite file watching
 # ---------------------------------------------------------------------------
 
 log "Configuring inotify limits..."

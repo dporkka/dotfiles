@@ -1,20 +1,24 @@
 {
   "//": "UNIFIED mcpServers BLUEPRINT — single source of truth for local MCP servers.",
   "//consumers": "Claude Code (via scripts/mcp-sync.sh -> user scope) AND avante.nvim (via mcphub.nvim, which reads this file directly: see config/nvim/lua/plugins/mcp.lua).",
-  "//servers": "Official MCP reference servers (modelcontextprotocol/servers). npx=Node, uvx=Python. Both runtimes are on-demand; nothing is installed globally.",
-  "//note": "Edit here, then run scripts/mcp-sync.sh to propagate to Claude Code. mcphub.nvim picks up changes on :MCPHub (press R to restart the hub).",
+  "//servers": "Official MCP reference servers (modelcontextprotocol/servers). npx=Node, uvx=Python. Both fetch on demand; nothing installed globally.",
+  "//wsl-node-path": "node/npx are nvm-managed and only on PATH in interactive shells; non-interactive spawns (Claude Code, mcp-hub) otherwise fall back to the WINDOWS npx (which corrupts the stdio JSON-RPC stream with a UNC banner). So each npx server prepends the nvm node bin to PATH. UPDATE this path if you change node versions: ls ~/.nvm/versions/node",
+  "//maintenance": "Edit here, then run scripts/mcp-sync.sh to propagate to Claude Code. mcphub.nvim picks up changes on :MCPHub (press R to restart the hub).",
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/dporkka/dev"]
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/dporkka/dev"],
+      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
     },
     "memory": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-memory"]
+      "args": ["-y", "@modelcontextprotocol/server-memory"],
+      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
     },
     "sequential-thinking": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
+      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
     },
     "fetch": {
       "command": "uvx",
@@ -22,7 +26,7 @@
     },
     "git": {
       "command": "uvx",
-      "args": ["mcp-server-git", "--repository", "/home/dporkka/dev"]
+      "args": ["mcp-server-git"]
     },
     "time": {
       "command": "uvx",

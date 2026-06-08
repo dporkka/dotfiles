@@ -70,6 +70,14 @@ return {
   --   <leader>ae  edit  → visual-select code, ask AI to transform it in-place
   --   <leader>at  toggle→ show/hide sidebar without losing context
   --
+  -- Model picker (Cursor-style — switch the active model mid-session):
+  --   <leader>ac  use Sonnet 4.6 (fast default)
+  --   <leader>ao  use Opus 4.8   (hard reasoning / large refactors)
+  --
+  -- Context (Cursor-style @ mentions, powered by fzf-lua):
+  --   @           add a file to context (in sidebar input)
+  --   <leader>aM  toggle the repomap (whole-codebase awareness for the agent)
+  --
   -- After generation:
   --   co / ct  accept ours / theirs in diff conflicts
   --   ]x / [x  jump between diff hunks
@@ -81,11 +89,16 @@ return {
     event = "VeryLazy",
     version = false,
     build = "make",
+    keys = {
+      { "<leader>ao", function() require("avante.api").switch_provider("opus") end,   desc = "Avante: use Opus (hard tasks)" },
+      { "<leader>ac", function() require("avante.api").switch_provider("claude") end, desc = "Avante: use Sonnet (default)" },
+    },
     dependencies = {
       "nvim-treesitter/nvim-treesitter",
       "stevearc/dressing.nvim",
       "nvim-lua/plenary.nvim",
       "MunifTanjim/nui.nvim",
+      "ibhagwan/fzf-lua",                 -- backs the @-file / @-symbol selector
       "HakonHarnes/img-clip.nvim",
       "MeanderingProgrammer/render-markdown.nvim",
     },
@@ -96,18 +109,37 @@ return {
 
       provider = "claude",
 
+      -- fzf-lua powers the @-file / @-symbol picker (Cursor-style @ mentions)
+      selector = {
+        provider = "fzf_lua",
+        provider_opts = {},
+      },
+
       providers = {
         claude = {
           endpoint = "https://api.anthropic.com",
-          -- claude-sonnet-4-6: fast + excellent for code; swap to claude-opus-4-8 for harder tasks
-          model = "claude-sonnet-4-6",
+          model = "claude-sonnet-4-6",      -- fast everyday default
           timeout = 30000,
           extra_request_body = {
             temperature = 0,
-            max_tokens = 16384,
+            max_tokens = 32000,             -- headroom for large multi-file edits
+          },
+        },
+        -- Opus for hard reasoning / big refactors — switch with <leader>ao.
+        -- Inherits endpoint + API key from `claude`; only the model changes.
+        opus = {
+          __inherited_from = "claude",
+          model = "claude-opus-4-8",
+          extra_request_body = {
+            temperature = 0,
+            max_tokens = 32000,
           },
         },
       },
+
+      -- Optional — Cursor's @web. Uncomment and `export TAVILY_API_KEY=...` to
+      -- let the agent fetch current docs/answers while working.
+      -- web_search_engine = { provider = "tavily" },
 
       behaviour = {
         auto_suggestions = false,         -- don't suggest on every keystroke; use <leader>ae
@@ -117,6 +149,7 @@ return {
         auto_approve_tool_permissions = true,       -- no permission prompts in agentic mode
         support_paste_from_clipboard = true,
         minimize_diff = true,
+        enable_token_counting = true,               -- show token usage per request
       },
 
       mappings = {

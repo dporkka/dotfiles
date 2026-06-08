@@ -5,10 +5,14 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
+    -- Pin to the classic `master` branch. LazyVim defaults to the `main`-branch
+    -- rewrite, which removed `nvim-treesitter.configs` and the inline opts schema
+    -- used below. Staying on master keeps this config (textobjects/swap/etc.) valid.
+    branch = "master",
     build = ":TSUpdate",
     event = { "BufReadPost", "BufNewFile" },
     dependencies = {
-      "nvim-treesitter/nvim-treesitter-textobjects",
+      "nvim-treesitter/nvim-treesitter-textobjects",  -- pinned to master below
     },
     opts = {
       ensure_installed = {
@@ -20,7 +24,10 @@ return {
         "html", "css", "scss",
 
         -- Data
-        "json", "jsonc", "yaml", "toml", "xml",
+        -- NOTE: "jsonc" omitted — its upstream grammar tarball currently fails to
+        -- download/extract (tar errors), which would flash on every startup. The
+        -- "json" parser covers .json fine; re-add "jsonc" once upstream is fixed.
+        "json", "yaml", "toml", "xml",
         "sql",
 
         -- Infrastructure
@@ -113,6 +120,19 @@ return {
     config = function(_, opts)
       require("nvim-treesitter.configs").setup(opts)
     end,
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- TEXTOBJECTS — pin to master + neutralize LazyVim's main-branch config.
+  -- LazyVim v15 ships an nvim-treesitter-textobjects spec on the `main` branch
+  -- whose config calls the main-only `setup()` and errors on master. On master,
+  -- textobjects are configured via the parent `configs.setup({ textobjects=… })`
+  -- above, so we override that spec with a no-op config here to silence the nag.
+  -- ---------------------------------------------------------------------------
+  {
+    "nvim-treesitter/nvim-treesitter-textobjects",
+    branch = "master",
+    config = function() end,
   },
 
   -- ---------------------------------------------------------------------------

@@ -64,6 +64,17 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
   export BROWSER="wslview"
   # wslview is part of wslu — install with: sudo apt install wslu
   # It opens URLs/files in the appropriate Windows application.
+
+  # GPU/GL rendering for GUI apps launched from WSL (e.g. Ghostty).
+  # WSL exposes the GPU via /dev/dxg + Mesa's d3d12 driver — not /dev/dri — so
+  # Mesa's default Zink/DRI probe fails noisily ("ZINK: failed to choose pdev",
+  # "egl: failed to create dri2 screen") before falling back. Pinning the WSL
+  # D3D12 driver silences those libEGL warnings and keeps GPU acceleration.
+  export MESA_LOADER_DRIVER_OVERRIDE=d3d12
+  export GALLIUM_DRIVER=d3d12
+  # If warnings persist, force software rendering instead (fine for a terminal):
+  #   unset MESA_LOADER_DRIVER_OVERRIDE GALLIUM_DRIVER
+  #   export LIBGL_ALWAYS_SOFTWARE=1
 fi
 
 # ---------------------------------------------------------------------------

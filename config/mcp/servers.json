@@ -2,23 +2,24 @@
   "//": "UNIFIED mcpServers BLUEPRINT — single source of truth for local MCP servers.",
   "//consumers": "Claude Code (via scripts/mcp-sync.sh -> user scope) AND avante.nvim (via mcphub.nvim, which reads this file directly: see config/nvim/lua/plugins/mcp.lua).",
   "//servers": "Official MCP reference servers (modelcontextprotocol/servers). npx=Node, uvx=Python. Both fetch on demand; nothing installed globally.",
-  "//wsl-node-path": "node/npx are nvm-managed and only on PATH in interactive shells; non-interactive spawns (Claude Code, mcp-hub) otherwise fall back to the WINDOWS npx (which corrupts the stdio JSON-RPC stream with a UNC banner). So each npx server prepends the nvm node bin to PATH. UPDATE this path if you change node versions: ls ~/.nvm/versions/node",
+  "//portable": "Paths use ${HOME} (expanded by both consumers). filesystem is scoped to ~/dev — change it if your code lives elsewhere.",
+  "//node-on-path": "npx servers prepend ${HOME}/.local/bin to PATH. On WSL+nvm, bootstrap.sh symlinks the Linux node toolchain there so spawns don't fall back to Windows node (whose UNC banner corrupts MCP stdio). On a VPS with system node it's a harmless no-op (system node is already on PATH).",
   "//maintenance": "Edit here, then run scripts/mcp-sync.sh to propagate to Claude Code. mcphub.nvim picks up changes on :MCPHub (press R to restart the hub).",
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/dporkka/dev"],
-      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "${HOME}/dev"],
+      "env": { "PATH": "${HOME}/.local/bin:${PATH}" }
     },
     "memory": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-memory"],
-      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
+      "env": { "PATH": "${HOME}/.local/bin:${PATH}" }
     },
     "sequential-thinking": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"],
-      "env": { "PATH": "${HOME}/.nvm/versions/node/v24.15.0/bin:${PATH}" }
+      "env": { "PATH": "${HOME}/.local/bin:${PATH}" }
     },
     "fetch": {
       "command": "uvx",

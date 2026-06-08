@@ -139,3 +139,44 @@ map("n", "<C-Up>", "<cmd>resize +2<cr>", opts)
 map("n", "<C-Down>", "<cmd>resize -2<cr>", opts)
 map("n", "<C-Left>", "<cmd>vertical resize -2<cr>", opts)
 map("n", "<C-Right>", "<cmd>vertical resize +2<cr>", opts)
+
+-- ---------------------------------------------------------------------------
+-- AI CONTEXT
+-- ---------------------------------------------------------------------------
+
+-- Yank the structural block (function / class / method / struct) surrounding
+-- the cursor as a fenced Markdown snippet with filename, for LLM tools.
+local function copy_structural_context()
+  local ok, ts_utils = pcall(require, "nvim-treesitter.ts_utils")
+  if not ok then
+    vim.notify("nvim-treesitter not available", vim.log.levels.WARN)
+    return
+  end
+
+  local node = ts_utils.get_node_at_cursor()
+
+  while node do
+    local t = node:type()
+    if t:match("function") or t:match("method") or t:match("class")
+      or t:match("struct") or t:match("impl") or t:match("type_alias")
+    then
+      break
+    end
+    node = node:parent()
+  end
+
+  if not node then
+    vim.notify("No structural node under cursor", vim.log.levels.WARN)
+    return
+  end
+
+  local bufnr = vim.api.nvim_get_current_buf()
+  local rel = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.")
+  local text = vim.treesitter.get_node_text(node, bufnr)
+  local ft = vim.bo[bufnr].filetype
+
+  vim.fn.setreg("+", string.format("### File: %s\n```%s\n%s\n```", rel, ft, text))
+  vim.notify("Structural context copied  →  clipboard", vim.log.levels.INFO)
+end
+
+map("n", "<leader>kc", copy_structural_context, { desc = "Copy AST context for AI" })

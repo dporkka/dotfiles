@@ -284,32 +284,49 @@ mkdir -p ~/.config ~/.local/bin ~/.local/share ~/.cache
 # Link configs
 cd "$DOTFILES_DIR"
 
-# Link individual config directories
+# Link individual config directories as SYMLINKS — the repo is the single source
+# of truth. (Was rsync --ignore-existing, which copied once and then silently
+# drifted: edits propagated in neither direction. See scripts/link-config.sh.)
 for dir in nvim tmux starship git ghostty; do
   if [[ -d "config/$dir" ]]; then
-    mkdir -p "$HOME/.config/$dir"
-    # Use rsync for merging (safer than stow for existing configs)
-    rsync -av "config/$dir/" "$HOME/.config/$dir/" --ignore-existing
-    success "Linked config/$dir"
+    if [[ -e "$HOME/.config/$dir" && ! -L "$HOME/.config/$dir" ]]; then
+      mv "$HOME/.config/$dir" "$HOME/.config/$dir.bak.$(date +%Y%m%d-%H%M%S)"
+      warn "Backed up existing ~/.config/$dir"
+    fi
+    ln -sfn "$DOTFILES_DIR/config/$dir" "$HOME/.config/$dir"
+    success "Linked config/$dir -> repo"
   fi
 done
 
-# Link home files (with backup)
+# Link home files as symlinks (with backup of any real file). Skip editor swaps.
 for file in home/.*; do
   [[ -f "$file" ]] || continue
   basename=$(basename "$file")
-  if [[ -f "$HOME/$basename" && ! -L "$HOME/$basename" ]]; then
+  case "$basename" in *.swp|*.swo) continue ;; esac
+  if [[ -e "$HOME/$basename" && ! -L "$HOME/$basename" ]]; then
     cp "$HOME/$basename" "$HOME/${basename}.backup.$(date +%Y%m%d)"
     warn "Backed up existing $basename"
   fi
-  cp -n "$file" "$HOME/$basename" 2>/dev/null || warn "$basename already exists, skipping"
+  ln -sf "$DOTFILES_DIR/$file" "$HOME/$basename"
 done
 
-# Starship config
-mkdir -p ~/.config
-cp -n config/starship/starship.toml ~/.config/starship.toml 2>/dev/null || true
+# Starship reads ~/.config/starship.toml
+ln -sf "$DOTFILES_DIR/config/starship/starship.toml" ~/.config/starship.toml
 
-success "Dotfiles linked"
+# Secrets are NOT in the repo. Seed the untracked secrets file on first install.
+mkdir -p "$HOME/.config/zsh"
+if [[ ! -f "$HOME/.config/zsh/secrets.zsh" ]]; then
+  umask 077
+  cat > "$HOME/.config/zsh/secrets.zsh" <<'SECRETS'
+# Untracked secrets — sourced by ~/.zshrc. NEVER commit this file.
+# export ANTHROPIC_API_KEY="sk-ant-..."   # avante + Claude
+# export TAVILY_API_KEY="tvly-..."        # avante @web (https://app.tavily.com)
+SECRETS
+  chmod 600 "$HOME/.config/zsh/secrets.zsh"
+  warn "Created ~/.config/zsh/secrets.zsh — add your API keys there"
+fi
+
+success "Dotfiles linked (symlinked)"
 
 # ---------------------------------------------------------------------------
 # 15b. NEOVIM PLUGINS — deterministic install from lazy-lock.json

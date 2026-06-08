@@ -1,0 +1,32 @@
+{
+  "//": "UNIFIED mcpServers BLUEPRINT — single source of truth for local MCP servers.",
+  "//consumers": "Claude Code (via scripts/mcp-sync.sh -> user scope) AND avante.nvim (via mcphub.nvim, which reads this file directly: see config/nvim/lua/plugins/mcp.lua).",
+  "//servers": "Official MCP reference servers (modelcontextprotocol/servers). npx=Node, uvx=Python. Both runtimes are on-demand; nothing is installed globally.",
+  "//note": "Edit here, then run scripts/mcp-sync.sh to propagate to Claude Code. mcphub.nvim picks up changes on :MCPHub (press R to restart the hub).",
+  "mcpServers": {
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/home/dporkka/dev"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-memory"]
+    },
+    "sequential-thinking": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+    },
+    "fetch": {
+      "command": "uvx",
+      "args": ["mcp-server-fetch"]
+    },
+    "git": {
+      "command": "uvx",
+      "args": ["mcp-server-git", "--repository", "/home/dporkka/dev"]
+    },
+    "time": {
+      "command": "uvx",
+      "args": ["mcp-server-time"]
+    }
+  }
+}

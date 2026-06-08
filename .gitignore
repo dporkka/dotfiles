@@ -1,0 +1,19 @@
+# editor / OS junk
+*.swp
+*.swo
+*~
+.DS_Store
+
+# local backups created by link-config.sh / bootstrap.sh
+*.bak
+*.bak.*
+*.backup.*
+
+# Neovim generated state (regenerated; not config)
+config/nvim/lazyvim.json
+
+# SECRETS — never commit. Real keys live in ~/.config/zsh/secrets.zsh (untracked).
+**/secrets.zsh
+*.local
+.env
+.env.*

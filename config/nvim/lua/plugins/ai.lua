@@ -6,27 +6,60 @@
 
 return {
   -- ---------------------------------------------------------------------------
-  -- SUPERMAVEN — inline ghost-text AI completions (free, sub-100ms latency)
-  -- Tab accepts the full suggestion; C-j accepts one word; C-] dismisses.
-  -- Only active in insert mode — does not touch blink.cmp's dropdown at all.
+  -- SUPERMAVEN — inline ghost-text AI completions (free, sub-100ms latency).
+  -- Tab acceptance is routed through blink.cmp's <Tab> (see the blink spec below)
+  -- so supermaven and the completion menu never fight over the key. The old
+  -- collision was that BOTH plugins bound <Tab> in insert mode (last-loaded won,
+  -- nondeterministically). supermaven's own keymaps are disabled here; we keep
+  -- <C-j> (accept word) and <C-]> (dismiss).
   -- ---------------------------------------------------------------------------
   {
     "supermaven-inc/supermaven-nvim",
     event = "InsertEnter",
     opts = {
-      keymaps = {
-        accept_suggestion = "<Tab>",
-        clear_suggestion  = "<C-]>",
-        accept_word       = "<C-j>",
-      },
       ignore_filetypes = { "TelescopePrompt", "ministarter", "alpha", "lazy", "mason" },
       color = {
         suggestion_color = "#6272a4",
         cterm = 244,
       },
       log_level = "off",
-      disable_inline_completion = false,
-      disable_keymaps = false,
+      disable_inline_completion = false,  -- keep the ghost text
+      disable_keymaps = true,             -- but not its keymaps; blink owns <Tab>
+    },
+    config = function(_, opts)
+      require("supermaven-nvim").setup(opts)
+      local preview = require("supermaven-nvim.completion_preview")
+      vim.keymap.set("i", "<C-j>", function() preview.on_accept_suggestion_word() end,
+        { desc = "Supermaven: accept word" })
+      vim.keymap.set("i", "<C-]>", function() preview.on_dispose_inlay() end,
+        { desc = "Supermaven: dismiss suggestion" })
+    end,
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- BLINK.CMP — smart <Tab>: accept a Supermaven ghost suggestion if one is
+  -- showing, else jump a snippet field, else fall through. This is the SINGLE
+  -- owner of <Tab> in insert mode (resolves the supermaven/blink collision).
+  -- Menu items are still accepted with <CR> (LazyVim's "enter" preset) and
+  -- navigated with <C-n>/<C-p>, so Tab stays a pure "accept AI / next field" key.
+  -- ---------------------------------------------------------------------------
+  {
+    "saghen/blink.cmp",
+    opts = {
+      keymap = {
+        ["<Tab>"] = {
+          function()
+            local ok, preview = pcall(require, "supermaven-nvim.completion_preview")
+            if ok and preview.has_suggestion() then
+              preview.on_accept_suggestion()
+              return true
+            end
+          end,
+          "snippet_forward",
+          "fallback",
+        },
+        ["<S-Tab>"] = { "snippet_backward", "fallback" },
+      },
     },
   },
 
@@ -107,6 +140,18 @@ return {
       -- legacy mode: older single-shot plan-and-apply approach
       mode = "agentic",
 
+      -- MCPHUB: inject live MCP server tools + prompt into avante (see plugins/mcp.lua).
+      -- Both are functions (not values) so the server state is always fresh and mcphub
+      -- isn't required before it's loaded; pcall keeps avante working if mcphub is absent.
+      system_prompt = function()
+        local ok, hub = pcall(function() return require("mcphub").get_hub_instance() end)
+        return (ok and hub) and hub:get_active_servers_prompt() or ""
+      end,
+      custom_tools = function()
+        local ok, ext = pcall(require, "mcphub.extensions.avante")
+        return ok and { ext.mcp_tool() } or {}
+      end,
+
       provider = "claude",
 
       -- fzf-lua powers the @-file / @-symbol picker (Cursor-style @ mentions)
@@ -137,9 +182,10 @@ return {
         },
       },
 
-      -- Optional — Cursor's @web. Uncomment and `export TAVILY_API_KEY=...` to
-      -- let the agent fetch current docs/answers while working.
-      -- web_search_engine = { provider = "tavily" },
+      -- Cursor's @web — the agent fetches current docs/answers while working.
+      -- Needs `export TAVILY_API_KEY=...` in your shell (stub in ~/.zshrc). If the
+      -- key is unset, avante just skips web search; it doesn't error.
+      web_search_engine = { provider = "tavily" },
 
       behaviour = {
         auto_suggestions = false,         -- don't suggest on every keystroke; use <leader>ae
@@ -204,7 +250,7 @@ return {
       windows = {
         position = "right",
         wrap = true,
-        width = 38,   -- chars, not %; gives a comfortable reading width
+        width = 50,   -- chars, not %; wide enough to read multi-file diffs comfortably
         sidebar_header = {
           enabled = true,
           align = "center",

@@ -35,9 +35,10 @@ fi
 # Create isolated session
 tmux new-session -d -s "$FULL_SESSION" -c "$CWD"
 
-# Window 1: Agent
+# Window 1: Agent — run it, then ping when it exits (bell + tmux msg + WSL toast).
+# \$HOME stays literal so the pane's own shell expands it at runtime.
 tmux rename-window -t "$FULL_SESSION:1" "agent"
-tmux send-keys -t "$FULL_SESSION:1" "$AGENT $EXTRA_ARGS" Enter
+tmux send-keys -t "$FULL_SESSION:1" "$AGENT $EXTRA_ARGS; \$HOME/dotfiles/scripts/notify.sh 'Agent finished: $SESSION' 'tmux session $FULL_SESSION'" Enter
 
 # Window 2: Monitoring — watch files the agent is changing
 tmux new-window -t "$FULL_SESSION" -n "watch" -c "$CWD"

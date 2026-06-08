@@ -313,6 +313,18 @@ done
 # Starship reads ~/.config/starship.toml
 ln -sf "$DOTFILES_DIR/config/starship/starship.toml" ~/.config/starship.toml
 
+# WSL FIX: node/npx are nvm lazy shell-functions, absent from the non-interactive
+# PATH that Claude Code / mcp-hub spawn with — so they fall back to the WINDOWS
+# node and break MCP (UNC banner corrupts the stdio stream). Symlink the Linux
+# toolchain into ~/.local/bin, which sits ahead of Windows node on PATH.
+NODE_BIN="$(ls -d "$HOME"/.nvm/versions/node/*/bin 2>/dev/null | tail -1)"
+if [[ -n "$NODE_BIN" && -x "$NODE_BIN/node" ]]; then
+  for b in node npx npm mcp-hub; do
+    [[ -e "$NODE_BIN/$b" ]] && ln -sf "$NODE_BIN/$b" "$HOME/.local/bin/$b"
+  done
+  success "Linked Linux node toolchain into ~/.local/bin (WSL non-interactive fix)"
+fi
+
 # Secrets are NOT in the repo. Seed the untracked secrets file on first install.
 mkdir -p "$HOME/.config/zsh"
 if [[ ! -f "$HOME/.config/zsh/secrets.zsh" ]]; then

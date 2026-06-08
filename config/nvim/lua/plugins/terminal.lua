@@ -4,24 +4,32 @@
 
 return {
   -- ---------------------------------------------------------------------------
-  -- ZELLIJ-NAV — seamless Ctrl+hjkl navigation across Neovim splits and Zellij panes
-  -- Only active inside a Zellij session (ZELLIJ env var set). Calls
-  -- `zellij action move-focus` when at the edge of Neovim's window layout.
+  -- VIM-TMUX-NAVIGATOR — seamless Ctrl+hjkl across Neovim splits AND tmux panes.
+  -- Your tmux.conf already ships the matching `is_vim` smart-switch bindings, so
+  -- C-h/j/k/l now flows editor pane <-> Claude/agent pane as one surface: at a
+  -- Neovim split edge focus hands off to the adjacent tmux pane instead of
+  -- stalling. (Previously this was zellij-nav, gated on $ZELLIJ, so under tmux it
+  -- never loaded and C-hjkl dead-ended at the edge.)
+  -- `tmux_navigator_no_mappings = 1` lets us own the maps here, lazy-loaded.
   -- ---------------------------------------------------------------------------
   {
-    "swaits/zellij-nav.nvim",
-    lazy = true,
-    event = "VeryLazy",
-    cond = function()
-      return vim.env.ZELLIJ ~= nil
+    "christoomey/vim-tmux-navigator",
+    init = function()
+      vim.g.tmux_navigator_no_mappings = 1
     end,
-    keys = {
-      { "<C-h>", "<cmd>ZellijNavigateLeftTab<cr>",  desc = "Navigate left (Neovim/Zellij)" },
-      { "<C-j>", "<cmd>ZellijNavigateDown<cr>",     desc = "Navigate down (Neovim/Zellij)" },
-      { "<C-k>", "<cmd>ZellijNavigateUp<cr>",       desc = "Navigate up (Neovim/Zellij)" },
-      { "<C-l>", "<cmd>ZellijNavigateRightTab<cr>", desc = "Navigate right (Neovim/Zellij)" },
+    cmd = {
+      "TmuxNavigateLeft",
+      "TmuxNavigateDown",
+      "TmuxNavigateUp",
+      "TmuxNavigateRight",
+      "TmuxNavigatePrevious",
     },
-    opts = {},
+    keys = {
+      { "<C-h>", "<cmd>TmuxNavigateLeft<cr>",  desc = "Navigate left (nvim/tmux)" },
+      { "<C-j>", "<cmd>TmuxNavigateDown<cr>",  desc = "Navigate down (nvim/tmux)" },
+      { "<C-k>", "<cmd>TmuxNavigateUp<cr>",    desc = "Navigate up (nvim/tmux)" },
+      { "<C-l>", "<cmd>TmuxNavigateRight<cr>", desc = "Navigate right (nvim/tmux)" },
+    },
   },
 
   -- ---------------------------------------------------------------------------
@@ -88,19 +96,11 @@ return {
       -- Helper: run command in a named terminal
       local Terminal = require("toggleterm.terminal").Terminal
 
-      -- Claude Code terminal (persistent)
-      local claude = Terminal:new({
-        cmd = "claude",
-        hidden = true,
-        direction = "float",
-        display_name = "Claude Code",
-        float_opts = { border = "curved" },
-        on_open = function(term)
-          vim.cmd("startinsert!")
-        end,
-      })
-
-      vim.keymap.set("n", "<leader>tc", function() claude:toggle() end, { desc = "Claude Code terminal" })
+      -- NOTE: the dedicated Claude Code float used to live here. It's gone because
+      -- claudecode.nvim (see plugins/ai.lua, <leader>k...) now owns Claude Code and
+      -- gives you the same persistent float PLUS editor integration (selection
+      -- context, native in-buffer diffs). The generic agent floats below
+      -- (<leader>ta / <leader>tA) remain for aider or any other CLI agent.
 
       -- Lazygit terminal (standalone, not the plugin — useful as fallback)
       local lazygit = Terminal:new({

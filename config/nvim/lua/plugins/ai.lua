@@ -241,4 +241,56 @@ return {
       },
     },
   },
+
+  -- ---------------------------------------------------------------------------
+  -- CLAUDECODE.NVIM — deep Claude Code <-> Neovim bridge (WebSocket/MCP).
+  -- This wires the terminal Claude Code you already drive into the editor: the
+  -- Cursor loop on the agent you actually use. Visual-select code and send it as
+  -- context; Claude's edits come back as NATIVE Neovim diffs you accept/reject in
+  -- place (no alt-tabbing to a separate diff view). Complements avante: avante is
+  -- the API-billed inline assistant, claudecode is your subscription agent.
+  --
+  -- Namespaced under <leader>k ("Klaude") because avante owns <leader>a and
+  -- LazyVim owns <leader>c. Core flow:
+  --   <leader>kk  toggle Claude          <leader>ks  send selection (visual mode)
+  --   <leader>kf  focus Claude window    <leader>kb  add current buffer as context
+  --   <leader>kr  resume last session    <leader>ka / <leader>kd  accept / deny diff
+  --   <leader>km  switch model           <leader>ks  (in Oil) add file under cursor
+  -- Inside a proposed-diff buffer, :w also accepts and :q rejects.
+  --
+  -- Requires the `claude` CLI on PATH (you have it) and snacks.nvim (LazyVim core).
+  -- ---------------------------------------------------------------------------
+  {
+    "coder/claudecode.nvim",
+    dependencies = { "folke/snacks.nvim" },
+    cmd = {
+      "ClaudeCode", "ClaudeCodeFocus", "ClaudeCodeSelectModel",
+      "ClaudeCodeAdd", "ClaudeCodeSend", "ClaudeCodeTreeAdd",
+      "ClaudeCodeStatus", "ClaudeCodeStart", "ClaudeCodeStop",
+      "ClaudeCodeDiffAccept", "ClaudeCodeDiffDeny", "ClaudeCodeCloseAllDiffs",
+    },
+    opts = {
+      -- track_selection (default on): Claude always sees your current visual
+      -- selection / cursor position, Cursor-style. Defaults are sensible; the
+      -- empty table just triggers require("claudecode").setup().
+    },
+    keys = {
+      { "<leader>k", nil, desc = "Claude Code" },
+      { "<leader>kk", "<cmd>ClaudeCode<cr>",            desc = "Toggle Claude" },
+      { "<leader>kf", "<cmd>ClaudeCodeFocus<cr>",       desc = "Focus Claude" },
+      { "<leader>kr", "<cmd>ClaudeCode --resume<cr>",   desc = "Resume Claude" },
+      { "<leader>kC", "<cmd>ClaudeCode --continue<cr>", desc = "Continue Claude" },
+      { "<leader>km", "<cmd>ClaudeCodeSelectModel<cr>", desc = "Select model" },
+      { "<leader>kb", "<cmd>ClaudeCodeAdd %<cr>",       desc = "Add current buffer" },
+      { "<leader>ks", "<cmd>ClaudeCodeSend<cr>", mode = "v", desc = "Send selection to Claude" },
+      {
+        "<leader>ks",
+        "<cmd>ClaudeCodeTreeAdd<cr>",
+        ft = { "oil", "neo-tree", "NvimTree", "minifiles", "netrw" },
+        desc = "Add file to Claude",
+      },
+      { "<leader>ka", "<cmd>ClaudeCodeDiffAccept<cr>",  desc = "Accept diff" },
+      { "<leader>kd", "<cmd>ClaudeCodeDiffDeny<cr>",    desc = "Deny diff" },
+    },
+  },
 }

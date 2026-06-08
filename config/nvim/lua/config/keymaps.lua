@@ -17,11 +17,9 @@ map("n", "<C-u>", "<C-u>zz", opts)
 map("n", "n", "nzzzv", opts)
 map("n", "N", "Nzzzv", opts)
 
--- Navigate windows with Ctrl+hjkl (works with tmux-navigator plugin)
-map("n", "<C-h>", "<C-w>h", opts)
-map("n", "<C-j>", "<C-w>j", opts)
-map("n", "<C-k>", "<C-w>k", opts)
-map("n", "<C-l>", "<C-w>l", opts)
+-- Ctrl+hjkl window navigation is owned by vim-tmux-navigator (plugins/terminal.lua).
+-- It moves between Neovim splits and, at a split edge, hands off to the adjacent
+-- tmux pane. Do NOT remap <C-hjkl> here or you'll re-break the seamless handoff.
 
 -- Navigate quickfix list
 map("n", "[q", "<cmd>cprev<cr>zz", { desc = "Prev quickfix" })

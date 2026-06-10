@@ -95,6 +95,9 @@ return {
       { "<leader>gD", "<cmd>DiffviewClose<cr>", desc = "Diffview close" },
       { "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "File history" },
       { "<leader>gH", "<cmd>DiffviewFileHistory<cr>", desc = "Repo history" },
+      -- Review everything this branch/worktree changed vs main (the agent's diff)
+      { "<leader>gm", "<cmd>DiffviewOpen main...HEAD<cr>", desc = "Review branch vs main" },
+      { "<leader>gM", "<cmd>DiffviewFileHistory --range=main...HEAD<cr>", desc = "Branch commit history vs main" },
     },
     opts = {
       enhanced_diff_hl = true,

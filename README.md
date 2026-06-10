@@ -128,6 +128,8 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 | `C-a \|` / `C-a -` | Split vertical / horizontal |
 | `C-h/j/k/l` | Navigate panes **and** nvim splits (no prefix, seamless) |
 | `C-a D / A / Q` | Dev / Agent (3-col) / Quad layout |
+| `C-a a` | **Agent dashboard** — fzf every agent across sessions + live preview; Enter jumps |
+| `C-a W` | **Spawn agent** in a new git worktree (prompts for branch) |
 | `C-a f` | Project finder (fzf over `~/dev`, etc.) |
 | `C-a g` | lazygit popup · `C-a t` shell popup |
 | `C-a S` | Session switcher · `M-1..9` jump to window |
@@ -161,7 +163,7 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 **Navigation / Git / LSP / Terminal** (unchanged highlights):
 `Space Space` files · `Space /` grep · `-` oil · `s` flash · `M-1..4` harpoon ·
 `gd`/`gr`/`K` LSP · `Space ca`/`Space rn`/`Space cf` · `]h`/`[h` + `Space ghs` hunks ·
-`Space gg` lazygit · `Space gd` diffview · `` C-` `` float term.
+`Space gg` lazygit · `Space gd` diffview · `Space gm` review branch vs main · `` C-` `` float term.
 
 ---
 
@@ -171,19 +173,31 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 # Jump to / create a tmux session for a project
 work ~/dev/myproject
 
-# Isolated agent on a git worktree (branch stays clean; own tmux session)
-new-worktree.sh feat/payments main
+# One command: git worktree + tmux session (agent/editor/review) + launch agent.
+# Each agent gets its own branch & dir, so parallel agents never collide.
+agent-worktree.sh feat/payments "add MFA to the login form"   # prompt is optional
+#   ↳ also bound to  C-a W  (prompts for a branch).  --base <b> / --agent <cmd> to override.
 
-# Dedicated agent session — editor + a "watch" (git status) + "review" window.
-# Pings you (bell + tmux msg + desktop/WSL toast) when the agent process exits.
+# Just a worktree, no agent:   new-worktree.sh feat/x main
+# Dedicated agent session (editor/watch/review), pings on process exit:
 agent-session.sh refactor-auth claude
-
-# Review agent output in Neovim
-#   Space gd  → diffview (all changed files)   Space fD → workspace diagnostics
 ```
 
-Run several agents in parallel (each its own worktree + session), then
-`tmux ls` to see them and attach to any `review` window to inspect diffs.
+**Mission control — which agent needs me?**
+
+- **`C-a a`** → fzf dashboard of every agent window across *all* sessions, with a
+  live pane preview; Enter jumps to it.
+- Status bar shows **`⚡N waiting / ✓N done`** across all sessions; window tabs get
+  ⚡/✓ glyphs.
+- This state comes from **Claude Code hooks** (`Stop` / `Notification` /
+  `UserPromptSubmit` → `scripts/agent-hook.sh` → tmux `@agent_state`), which also
+  fire the desktop/WSL toast. `done` only toasts when you're *not* looking at that
+  pane, so active pairing stays quiet.
+- ⚠️ The hooks live in **`~/.claude/settings.json` — machine-local, NOT in this repo** —
+  so re-add them after cloning onto a new machine.
+
+**Review** each agent's work in Neovim with **`Space gm`** → diffview of `main...HEAD`
+(the whole branch diff), or open its `review` window.
 
 ---
 

@@ -12,6 +12,9 @@
 # Neovim generated state (regenerated; not config)
 config/nvim/lazyvim.json
 
+# tmux TPM plugins (vendored third-party repos; reinstall with `prefix + I`)
+config/tmux/plugins/
+
 # SECRETS — never commit. Real keys live in ~/.config/zsh/secrets.zsh (untracked).
 **/secrets.zsh
 *.local

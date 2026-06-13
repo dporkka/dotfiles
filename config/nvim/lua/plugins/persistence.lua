@@ -36,7 +36,11 @@ return {
           -- Defer past the dashboard's VimEnter handler, which would otherwise
           -- win the race and leave the session unrestored.
           vim.schedule(function()
-            require("persistence").load()
+            -- Skip session restore in huge repos to avoid loading 50+ buffers
+            local cwd = vim.fn.getcwd()
+            if not cwd:match("OutdoorCRMDemo2") then
+              require("persistence").load()
+            end
           end)
         end
       end,

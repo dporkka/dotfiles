@@ -15,6 +15,7 @@ return {
   -- ---------------------------------------------------------------------------
   {
     "supermaven-inc/supermaven-nvim",
+    enabled = false,
     event = "InsertEnter",
     opts = {
       ignore_filetypes = { "TelescopePrompt", "ministarter", "alpha", "lazy", "mason" },
@@ -119,7 +120,6 @@ return {
   -- ---------------------------------------------------------------------------
   {
     "yetone/avante.nvim",
-    event = "VeryLazy",
     version = false,
     build = "make",
     keys = {

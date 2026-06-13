@@ -16,36 +16,17 @@ return {
     },
     opts = {
       ensure_installed = {
-        -- Core languages
-        "typescript", "tsx", "javascript", "jsdoc",
-        "python", "lua", "bash", "fish",
-
-        -- Web
-        "html", "css", "scss",
-
-        -- Data
-        -- NOTE: "jsonc" omitted — its upstream grammar tarball currently fails to
-        -- download/extract (tar errors), which would flash on every startup. The
-        -- "json" parser covers .json fine; re-add "jsonc" once upstream is fixed.
-        "json", "yaml", "toml", "xml",
-        "sql",
-
-        -- Infrastructure
-        "dockerfile", "nginx",
-
-        -- Git
-        "git_config", "git_rebase", "gitcommit", "gitignore", "gitattributes",
-
-        -- Markdown
-        "markdown", "markdown_inline",
-
-        -- Config
-        "vim", "vimdoc", "query", "regex",
-
-        -- Misc
-        "graphql", "prisma",
+        "typescript",
+        "tsx",
+        "javascript",
+        "lua",
+        "bash",
+        "markdown",
+        "markdown_inline",
+        "json",
+        "yaml",
       },
-      auto_install = true,  -- install missing parsers on open
+      auto_install = false,
       highlight = {
         enable = true,
         disable = function(_, buf)
@@ -55,9 +36,9 @@ return {
           if ok and stats and stats.size > max_filesize then return true end
         end,
       },
-      indent = { enable = true },
+      indent = { enable = false },
       incremental_selection = {
-        enable = true,
+        enable = false,
         keymaps = {
           init_selection = "<C-space>",
           node_incremental = "<C-space>",
@@ -107,7 +88,7 @@ return {
           },
         },
         swap = {
-          enable = true,
+          enable = false,
           swap_next = {
             ["<leader>ca"] = "@parameter.inner",
           },
@@ -135,24 +116,8 @@ return {
     config = function() end,
   },
 
-  -- ---------------------------------------------------------------------------
-  -- TREESITTER-CONTEXT — sticky scroll: pins current function/class at top
-  -- Exactly what Cursor's sticky context bar does. [C jumps up to the context.
-  -- ---------------------------------------------------------------------------
   {
     "nvim-treesitter/nvim-treesitter-context",
-    event = "BufReadPost",
-    opts = {
-      enable = true,
-      max_lines = 3,
-      min_window_height = 0,
-      trim_scope = "outer",
-      mode = "cursor",
-      separator = nil,
-      zindex = 20,
-    },
-    keys = {
-      { "[C", function() require("treesitter-context").go_to_context(vim.v.count1) end, desc = "Go to context" },
-    },
+    enabled = false,
   },
 }

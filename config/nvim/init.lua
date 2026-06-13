@@ -39,7 +39,6 @@ require("lazy").setup({
     { import = "lazyvim.plugins.extras.formatting.prettier" },
     { import = "lazyvim.plugins.extras.editor.fzf" },       -- fzf-lua instead of telescope
     { import = "lazyvim.plugins.extras.coding.blink" },     -- blink.cmp instead of nvim-cmp
-    { import = "lazyvim.plugins.extras.ui.mini-animate" },  -- minimal animations (can remove)
 
     -- Our custom plugins and overrides
     { import = "plugins" },

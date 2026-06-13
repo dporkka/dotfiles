@@ -27,7 +27,7 @@ return {
       -- ~/.config/mcphub/servers.json. Same file Claude Code syncs from.
       config = vim.fn.expand("~/dotfiles/config/mcp/servers.json"),
       -- Let the model start/stop servers on demand (keeps idle ones cold).
-      auto_toggle_mcp_servers = true,
+      auto_toggle_mcp_servers = false,
       -- Skip the per-call confirm dialog for MCP tools inside avante. Flip to
       -- false (or a function) if you want to approve each tool call.
       auto_approve = true,

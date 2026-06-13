@@ -76,7 +76,7 @@ return {
 
       -- ── Virtual text — shows variable values inline while stepping ──────────
       require("nvim-dap-virtual-text").setup({
-        enabled                   = true,
+        enabled                   = false,
         highlight_changed_variables = true,
         all_frames                = false,
         virt_text_pos             = "eol",

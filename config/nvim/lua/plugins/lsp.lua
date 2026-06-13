@@ -52,7 +52,7 @@ return {
         },
       },
       inlay_hints = {
-        enabled = true,   -- TypeScript inlay hints (parameter names, types)
+        enabled = false,  -- disabled to reduce LSP CPU/RAM churn
       },
       codelens = {
         enabled = false,  -- can be noisy; enable per-project

@@ -8,11 +8,11 @@ local opt = vim.opt
 -- PERFORMANCE
 -- ---------------------------------------------------------------------------
 
-opt.updatetime = 200      -- faster CursorHold events (default 4000ms is way too slow)
+opt.updatetime = 400      -- faster CursorHold events (default 4000ms is way too slow)
 opt.timeoutlen = 300      -- faster which-key popup; shorter leader key timeout
-opt.redrawtime = 1500     -- abort syntax highlight if it takes too long
+opt.redrawtime = 1000     -- abort syntax highlight if it takes too long
 opt.lazyredraw = false    -- don't use lazyredraw (breaks some plugins; true speeds up macros)
-opt.synmaxcol = 300       -- don't syntax highlight past column 300 (perf on long lines)
+opt.synmaxcol = 200       -- don't syntax highlight past column 300 (perf on long lines)
 opt.maxmempattern = 2000  -- limit regex memory
 
 -- ---------------------------------------------------------------------------
@@ -95,11 +95,11 @@ opt.pumblend = 10           -- popup transparency
 -- FOLDS — use Treesitter-based folding
 -- ---------------------------------------------------------------------------
 
-opt.foldmethod = "expr"
+opt.foldmethod = "manual"
 opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 opt.foldlevel = 99          -- start fully unfolded
 opt.foldlevelstart = 99
-opt.foldenable = true
+opt.foldenable = false
 
 -- ---------------------------------------------------------------------------
 -- WHITESPACE DISPLAY

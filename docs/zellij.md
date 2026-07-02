@@ -112,9 +112,11 @@ This opens a new floating tab named `agent-HHMMSS` running `claude --task "..."`
 | Key | Action |
 |---|---|
 | `Alt + a` | Session manager popup |
-| `Alt + d` | **Agent dashboard** (fzf over agent sessions) |
+| `Alt + d` | **Agent dashboard** (fzf over tmux + Zellij agents) |
 | `Alt + Shift + a` | **Spawn new agent session** (prompt) |
 | `Alt + w` | **Spawn new agent worktree** (prompt) |
+| `Alt + r` | **List agents** from the unified registry |
+| `Alt + Shift + r` | **Prune dead agents** from the registry |
 
 ### tmux emulation mode (`Ctrl + b`)
 
@@ -184,11 +186,40 @@ This means:
 
 ---
 
+## Unified agent registry
+
+Every agent launcher registers its session in `~/.local/state/agents/registry/<session>.json`. This gives you one source of truth for agents across tmux and Zellij.
+
+Why it helps:
+
+- One dashboard (`C-a a` / `Alt+d`) lists **both** tmux and Zellij agents.
+- State survives multiplexer restarts because it lives on disk.
+- The tmux status bar counts waiting/done agents from both multiplexers.
+
+Registry commands:
+
+```bash
+# List all agents
+agent-registry.sh list
+
+# JSON output for scripting
+agent-registry.sh list --json
+
+# Remove records for dead sessions
+agent-registry.sh prune
+
+# Manual state override
+agent-registry.sh set-state <session> waiting
+```
+
+Fields stored per agent: `session`, `multiplexer`, `worktree`, `branch`, `base`, `agent_cmd`, `pid`, `state`, `started_at`, `updated_at`.
+
 ## Agent state in the status bar
 
 `scripts/agent-hook.sh` is called by Claude Code hooks (`Stop`, `Notification`, `UserPromptSubmit`). It:
 
 - Renames the current Zellij tab with `⚡ waiting`, `• working`, or `✓ done` prefixes.
+- Mirrors the state into the unified registry so the dashboard/status line stay in sync.
 - Fires a desktop/WSL notification via `notify.sh` when an agent finishes, unless you are currently focused on it.
 
 Wire the hooks in `~/.claude/settings.json`:

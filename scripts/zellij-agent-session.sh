@@ -11,6 +11,7 @@
 # Each agent gets its own Zellij session so agents are fully isolated.
 # Sessions persist even if you detach — check progress any time.
 # The agent command is passed to the shared agent.kdl layout via ZELLIJ_AGENT_CMD.
+# The session is registered in agent-registry.sh so dashboards can see it.
 # =============================================================================
 
 set -euo pipefail
@@ -45,6 +46,19 @@ if ! command -v zellij &>/dev/null; then
   echo "zellij not found"
   exit 1
 fi
+
+# Register with the unified agent registry so cross-multiplexer dashboards can
+# find this session. worktree/branch are best-effort; base is not meaningful here.
+CURRENT_BRANCH=""
+if command -v git >/dev/null 2>&1 && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  CURRENT_BRANCH="$(git branch --show-current 2>/dev/null || true)"
+fi
+"$HOME/dotfiles/scripts/agent-registry.sh" register "$FULL_SESSION" zellij \
+  worktree="$CWD" \
+  branch="${CURRENT_BRANCH:-}" \
+  base="" \
+  agent_cmd="$ZELLIJ_AGENT_CMD" \
+  pid="$$" 2>/dev/null || true
 
 # Create the session in the background from the current directory.
 # `attach -b` creates a detached session; the layout defines the tabs/panes.

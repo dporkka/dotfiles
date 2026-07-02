@@ -21,8 +21,14 @@ zwork ~/dev/myproject
 # AI agents
 zellij-agent-session.sh refactor-auth claude
 zellij-agent-worktree.sh feat/payments "add MFA"
-zellij-agent-dashboard.sh
+zellij-agent-dashboard.sh         # unified tmux + Zellij dashboard
 zagent "refactor auth middleware"
+
+# Unified registry
+agent-registry.sh list            # all agents
+agent-registry.sh list --json     # JSON output
+agent-registry.sh prune           # remove dead records
+agent-registry.sh set-state <session> waiting
 ```
 
 ---
@@ -50,9 +56,11 @@ zagent "refactor auth middleware"
 | Key | Action |
 |---|---|
 | `Alt + a` | Session manager popup |
-| `Alt + d` | Agent dashboard |
+| `Alt + d` | Agent dashboard (tmux + Zellij) |
 | `Alt + Shift + a` | Spawn agent session |
 | `Alt + w` | Spawn agent worktree |
+| `Alt + r` | List agents from registry |
+| `Alt + Shift + r` | Prune dead agent records |
 
 ### tmux emulation (`Ctrl + b`, then...)
 

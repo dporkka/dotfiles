@@ -126,6 +126,22 @@ keybinds clear-defaults=true {
             }
             SwitchToMode "normal"
         }
+
+        // Unified agent registry: list every agent across tmux and Zellij.
+        bind "Alt r" {
+            Run "bash" "-c" "$HOME/dotfiles/scripts/agent-registry.sh list; echo; echo Press Enter to close...; read" {
+                floating true
+            }
+            SwitchToMode "normal"
+        }
+
+        // Prune dead agent records from the registry.
+        bind "Alt Shift r" {
+            Run "bash" "-c" "$HOME/dotfiles/scripts/agent-registry.sh prune; echo; echo Press Enter to close...; read" {
+                floating true
+            }
+            SwitchToMode "normal"
+        }
     }
 
     shared_except "locked" {

@@ -5,8 +5,8 @@
 # One command: git worktree -> deps -> Zellij session -> launch the agent.
 # Each agent gets its own branch + working directory, so parallel agents never
 # collide. The session is tagged by name so it appears in the agent dashboard
-# (Alt+a / zellij-agent-dashboard.sh), and Claude Code hooks (agent-hook.sh)
-# light up its tab state.
+# (Alt+a / zellij-agent-dashboard.sh), registered in agent-registry.sh, and
+# Claude Code hooks (agent-hook.sh) light up its tab state.
 #
 # Usage:
 #   zellij-agent-worktree.sh <branch> [initial prompt words...]
@@ -70,11 +70,22 @@ fi
 LAYOUT_DIR="${DOTS:-$HOME/dotfiles}/config/zellij/layouts"
 LAYOUT="${LAYOUT_DIR}/agent.kdl"
 
-AGENT_CMD="$AGENT"
-[[ -n "$PROMPT" ]] && AGENT_CMD="$AGENT_CMD $(printf '%q' "$PROMPT")"
+# Human-readable command for the registry; escaped version for the Zellij layout.
+AGENT_CMD_DISPLAY="$AGENT"
+[[ -n "$PROMPT" ]] && AGENT_CMD_DISPLAY="$AGENT_CMD_DISPLAY $PROMPT"
+AGENT_CMD_ESCAPED="$AGENT"
+[[ -n "$PROMPT" ]] && AGENT_CMD_ESCAPED="$AGENT_CMD_ESCAPED $(printf '%q' "$PROMPT")"
 
-export ZELLIJ_AGENT_CMD="$AGENT_CMD"
+export ZELLIJ_AGENT_CMD="$AGENT_CMD_ESCAPED"
 if ! zellij list-sessions --no-formatting 2>/dev/null | awk '{print $1}' | grep -qxF "$SESSION"; then
+  # Register before launching so hooks that fire immediately can update state.
+  "$HOME/dotfiles/scripts/agent-registry.sh" register "$SESSION" zellij \
+    worktree="$WORKTREE_PATH" \
+    branch="$BRANCH" \
+    base="$BASE" \
+    agent_cmd="$AGENT_CMD_DISPLAY" \
+    pid="$$" 2>/dev/null || true
+
   (cd "$WORKTREE_PATH" && zellij --layout "$LAYOUT" attach -b "$SESSION")
 fi
 

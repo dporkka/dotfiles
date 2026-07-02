@@ -200,6 +200,20 @@ return {
         -- sqls = {},
       },
     },
+    init = function()
+      -- Disable semantic tokens for large files (>1 MB) to keep LSP responsive
+      -- when AI agents open generated artifacts or huge logs.
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("large_file_lsp", { clear = true }),
+        callback = function(args)
+          if not vim.b[args.buf].large_file then return end
+          local client = vim.lsp.get_client_by_id(args.data.client_id)
+          if client and client.server_capabilities then
+            client.server_capabilities.semanticTokensProvider = nil
+          end
+        end,
+      })
+    end,
   },
 
   -- SchemaStore for JSON/YAML schemas

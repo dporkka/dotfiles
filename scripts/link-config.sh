@@ -39,7 +39,7 @@ if [[ -z "${MODE:-}" ]]; then
 fi
 
 # XDG config directories (ghostty is a client-side terminal: skip on server)
-LINK_DIRS="nvim tmux"
+LINK_DIRS="nvim tmux zellij"
 [[ "$MODE" == "wsl" ]] && LINK_DIRS="$LINK_DIRS ghostty"
 for d in $LINK_DIRS; do
   # Preserve Neovim's generated state file across the dir swap (regenerates anyway).

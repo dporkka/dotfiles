@@ -17,7 +17,7 @@ truth: configs are **symlinked** into `~/.config`, so editing the repo edits you
 | **AI in editor** | **avante.nvim** (Cursor-style, `<leader>a`) · **claudecode.nvim** (`<leader>k`) · **supermaven** ghost-text · **mcphub.nvim** (MCP tools for avante) |
 | **AI in terminal** | Claude Code CLI · git-worktree + tmux agent isolation · `agent-session.sh` (pings you when an agent finishes) |
 | **MCP** | One blueprint (`config/mcp/servers.json`) → both Claude Code *and* avante. 6 core local servers: filesystem, memory, sequential-thinking, fetch, git, time |
-| **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
+| **Multiplexer** | Zellij 0.44+ (primary) · tmux 3.x preserved for existing workflows — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
 | **Terminal** | Ghostty (local machine only) |
 | **Shell** | zsh + starship; secrets kept out of the repo |
 
@@ -69,6 +69,13 @@ bash ~/dotfiles/scripts/link-config.sh
 > **The symlink model:** `~/.config/{nvim,tmux,ghostty}`, `~/.zshrc`, and `~/.config/starship.toml`
 > are symlinks into this repo. Edit the repo, changes are live immediately — no copy/sync step.
 > Live config follows the repo's **checked-out branch**, so keep `main` checked out for daily use.
+
+---
+
+## Documentation
+
+- **[Zellij Setup Guide](docs/zellij.md)** — install, layouts, AI-agent workflows, key bindings, and migration tips from tmux.
+- **[Zellij Cheatsheet](docs/zellij-cheatsheet.md)** — one-page command/key/layout reference.
 
 ---
 
@@ -135,6 +142,22 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 | `C-a S` | Session switcher · `M-1..9` jump to window |
 | `C-a r` | Reload config · `prefix + I/U` TPM install/update |
 
+### Zellij (primary multiplexer)
+
+| Key | Action |
+|---|---|
+| `Ctrl b` | Enter tmux-emulation mode (then `\|`, `-`, `c`, `hjkl`, etc.) |
+| `Alt h/j/k/l` | Move focus between panes/tabs |
+| `Alt n` | New pane · `Alt f` toggle floating panes |
+| `Ctrl t` / `Ctrl p` / `Ctrl n` / `Ctrl o` | Tab / pane / resize / session mode |
+| `Ctrl o` `w` | Session manager popup |
+| `Alt a` | **Agent session manager** popup |
+| `Alt Shift a` | **Spawn agent session** (prompts for name/agent) |
+| `Alt w` | **Spawn agent worktree** (prompts for branch/base/agent) |
+| `Alt d` | **Agent dashboard** — fzf over running Zellij agent sessions |
+| `zellij --layout agent --session <name>` | Spawn an AI agent session layout |
+| `zellij --layout dev` / `quad` | Dev or quad pane layout |
+
 ### Neovim (leader = `Space`)
 
 **AI — Claude Code (`<leader>k`)**
@@ -181,6 +204,12 @@ agent-worktree.sh feat/payments "add MFA to the login form"   # prompt is option
 # Just a worktree, no agent:   new-worktree.sh feat/x main
 # Dedicated agent session (editor/watch/review), pings on process exit:
 agent-session.sh refactor-auth claude
+
+# Zellij equivalents (coexist with tmux):
+zwork ~/dev/myproject                    # jump to / create a zellij session
+zellij-agent-session.sh refactor-auth claude
+zellij-agent-dashboard.sh                # fzf mission control for zellij agents
+zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
 ```
 
 **Mission control — which agent needs me?**

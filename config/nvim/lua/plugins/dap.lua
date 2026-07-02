@@ -127,6 +127,64 @@ return {
         }
       end
 
+      -- ── Go ────────────────────────────────────────────────────────────────
+      -- Requires: Mason install delve
+      dap.adapters.go = {
+        type = "server",
+        port = "${port}",
+        executable = {
+          command = vim.fn.stdpath("data") .. "/mason/packages/delve/dlv",
+          args = { "dap", "-l", "127.0.0.1:${port}" },
+        },
+      }
+      dap.configurations.go = {
+        {
+          type = "go",
+          name = "Debug package",
+          request = "launch",
+          mode = "debug",
+          program = "${workspaceFolder}",
+        },
+        {
+          type = "go",
+          name = "Debug file",
+          request = "launch",
+          mode = "debug",
+          program = "${file}",
+        },
+        {
+          type = "go",
+          name = "Debug test",
+          request = "launch",
+          mode = "test",
+          program = "${file}",
+        },
+      }
+
+      -- ── Rust ───────────────────────────────────────────────────────────────
+      -- Requires: Mason install codelldb
+      dap.adapters.rust = {
+        type = "server",
+        port = "${port}",
+        host = "127.0.0.1",
+        executable = {
+          command = vim.fn.stdpath("data") .. "/mason/packages/codelldb/extension/adapter/codelldb",
+          args = { "--port", "${port}" },
+        },
+      }
+      dap.configurations.rust = {
+        {
+          type = "rust",
+          name = "Debug executable",
+          request = "launch",
+          program = function()
+            return vim.fn.input("Path to executable: ", vim.fn.getcwd() .. "/target/debug/", "file")
+          end,
+          cwd = "${workspaceFolder}",
+          stopOnEntry = false,
+        },
+      }
+
       -- ── Python ─────────────────────────────────────────────────────────────
       -- Requires: Mason install debugpy
       dap.adapters.python = function(cb, config)

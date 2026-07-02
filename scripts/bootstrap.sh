@@ -169,6 +169,9 @@ if ! command -v eza &>/dev/null; then
     sudo chmod 644 /etc/apt/keyrings/gierens.gpg /etc/apt/sources.list.d/gierens.list
     sudo apt-get update -qq && sudo apt-get install -y eza
     success "Eza installed"
+  elif [[ "$DISTRO" == "fedora" ]]; then
+    sudo dnf install -y eza
+    success "Eza installed"
   else
     warn "eza: no package source configured for $DISTRO — install manually: https://github.com/eza-community/eza/releases"
   fi
@@ -312,8 +315,15 @@ if ! command -v docker &>/dev/null; then
       sudo apt-get update -qq && sudo apt-get install -y docker-ce docker-ce-cli containerd.io
       sudo usermod -aG docker "$USER"
       success "Docker CE installed (re-login for docker group to take effect)"
+    elif [[ "$DISTRO" == "fedora" ]]; then
+      sudo dnf -y install dnf-plugins-core
+      sudo dnf config-manager --add-repo https://download.docker.com/linux/fedora/docker-ce.repo
+      sudo dnf install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      sudo systemctl enable --now docker
+      sudo usermod -aG docker "$USER"
+      success "Docker CE installed (re-login for docker group to take effect)"
     else
-      warn "Docker auto-install only supported on Debian/Ubuntu — install manually"
+      warn "Docker auto-install only supported on Debian/Ubuntu/Fedora — install manually"
     fi
   fi
 else
@@ -380,7 +390,7 @@ cd "$DOTFILES_DIR"
 
 # Link individual config directories as SYMLINKS — the repo is the single source
 # of truth. ghostty is a client-side terminal: skip on server mode.
-LINK_CONFIGS="nvim tmux starship git"
+LINK_CONFIGS="nvim tmux zellij starship git"
 [[ "$MODE" == "wsl" ]] && LINK_CONFIGS="$LINK_CONFIGS ghostty"
 for dir in $LINK_CONFIGS; do
   if [[ -d "config/$dir" ]]; then

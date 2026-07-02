@@ -5,7 +5,7 @@
 return {
   -- Mason: install LSP servers, linters, formatters
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = {
       ui = { border = "rounded" },
       -- Installed tools beyond what LazyVim manages
@@ -140,6 +140,39 @@ return {
                 paramName = "Disable",
                 semicolon = "Disable",
                 arrayIndex = "Disable",
+              },
+            },
+          },
+        },
+
+        -- Go
+        gopls = {
+          settings = {
+            gopls = {
+              analyses = {
+                unusedparams = true,
+                shadow = true,
+              },
+              staticcheck = true,
+              gofumpt = false,  -- conform runs gofmt/goimports; disable LSP formatting
+              usePlaceholders = true,
+              completeUnimported = true,
+            },
+          },
+        },
+
+        -- Rust
+        rust_analyzer = {
+          settings = {
+            ["rust-analyzer"] = {
+              check = {
+                command = "clippy",
+              },
+              cargo = {
+                loadOutDirsFromCheck = true,
+              },
+              procMacro = {
+                enable = true,
               },
             },
           },

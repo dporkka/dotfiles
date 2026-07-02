@@ -6,12 +6,10 @@
 
 return {
   -- ---------------------------------------------------------------------------
-  -- SUPERMAVEN — inline ghost-text AI completions (free, sub-100ms latency).
-  -- Tab acceptance is routed through blink.cmp's <Tab> (see the blink spec below)
-  -- so supermaven and the completion menu never fight over the key. The old
-  -- collision was that BOTH plugins bound <Tab> in insert mode (last-loaded won,
-  -- nondeterministically). supermaven's own keymaps are disabled here; we keep
-  -- <C-j> (accept word) and <C-]> (dismiss).
+  -- SUPERMAVEN — inline ghost-text AI completions (currently disabled).
+  -- Kept as a disabled stub so it can be toggled back on without re-adding the
+  -- spec. When enabled, route Tab acceptance through blink.cmp to avoid a keymap
+  -- collision with the completion menu.
   -- ---------------------------------------------------------------------------
   {
     "supermaven-inc/supermaven-nvim",
@@ -38,27 +36,18 @@ return {
   },
 
   -- ---------------------------------------------------------------------------
-  -- BLINK.CMP — smart <Tab>: accept a Supermaven ghost suggestion if one is
-  -- showing, else jump a snippet field, else fall through. This is the SINGLE
-  -- owner of <Tab> in insert mode (resolves the supermaven/blink collision).
+  -- BLINK.CMP — <Tab> jumps the next snippet field or falls through.
+  -- If Supermaven is re-enabled above, prepend a function here that calls
+  -- preview.has_suggestion() / preview.on_accept_suggestion() so Tab accepts
+  -- ghost text before falling through to snippet navigation.
   -- Menu items are still accepted with <CR> (LazyVim's "enter" preset) and
-  -- navigated with <C-n>/<C-p>, so Tab stays a pure "accept AI / next field" key.
+  -- navigated with <C-n>/<C-p>.
   -- ---------------------------------------------------------------------------
   {
     "saghen/blink.cmp",
     opts = {
       keymap = {
-        ["<Tab>"] = {
-          function()
-            local ok, preview = pcall(require, "supermaven-nvim.completion_preview")
-            if ok and preview.has_suggestion() then
-              preview.on_accept_suggestion()
-              return true
-            end
-          end,
-          "snippet_forward",
-          "fallback",
-        },
+        ["<Tab>"] = { "snippet_forward", "fallback" },
         ["<S-Tab>"] = { "snippet_backward", "fallback" },
       },
     },

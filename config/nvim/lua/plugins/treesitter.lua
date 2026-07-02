@@ -16,6 +16,7 @@ return {
     },
     opts = {
       ensure_installed = {
+        -- Core languages for AI-agent development
         "typescript",
         "tsx",
         "javascript",
@@ -25,6 +26,21 @@ return {
         "markdown_inline",
         "json",
         "yaml",
+        "toml",
+
+        -- Go / Rust / Python stacks
+        "go",
+        "gomod",
+        "gosum",
+        "rust",
+        "python",
+
+        -- Infra / config
+        "dockerfile",
+        "regex",
+        "vim",
+        "vimdoc",
+        "query",
       },
       auto_install = false,
       highlight = {
@@ -118,6 +134,56 @@ return {
 
   {
     "nvim-treesitter/nvim-treesitter-context",
-    enabled = false,
+    event = { "BufReadPost", "BufNewFile" },
+    opts = {
+      enable = true,
+      max_lines = 3,             -- keep the sticky header small
+      min_window_height = 15,
+      line_numbers = true,
+      multiline_threshold = 20,
+      trim_scope = "outer",
+      mode = "cursor",           -- show context for the cursor's function
+      separator = "─",
+    },
+    keys = {
+      { "[C", function() require("treesitter-context").go_to_context() end, desc = "Go to context" },
+    },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- RAINBOW DELIMITERS — bracket pair colorization via tree-sitter
+  -- WHY: deeply nested agent-generated code (JSON/TS/Go/Rust) is easier to read
+  -- when matching brackets share a color. Replaces the older rainbow_parentheses.
+  -- ---------------------------------------------------------------------------
+  {
+    "HiPhish/rainbow-delimiters.nvim",
+    event = { "BufReadPost", "BufNewFile" },
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    config = function()
+      local rainbow = require("rainbow-delimiters")
+      vim.g.rainbow_delimiters = {
+        strategy = {
+          [""] = rainbow.strategy["global"],
+          vim = rainbow.strategy["local"],
+        },
+        query = {
+          [""] = "rainbow-delimiters",
+          lua = "rainbow-blocks",
+        },
+        priority = {
+          [""] = 110,
+          lua = 210,
+        },
+        highlight = {
+          "RainbowDelimiterRed",
+          "RainbowDelimiterYellow",
+          "RainbowDelimiterBlue",
+          "RainbowDelimiterOrange",
+          "RainbowDelimiterGreen",
+          "RainbowDelimiterViolet",
+          "RainbowDelimiterCyan",
+        },
+      }
+    end,
   },
 }

@@ -80,7 +80,7 @@ return {
   -- MINI.SURROUND — surround text with brackets, quotes, tags
   -- ---------------------------------------------------------------------------
   {
-    "echasnovski/mini.surround",
+    "nvim-mini/mini.surround",
     version = false,
     event = "BufReadPost",
     opts = {
@@ -100,7 +100,7 @@ return {
   -- MINI.PAIRS — auto-close brackets, quotes
   -- ---------------------------------------------------------------------------
   {
-    "echasnovski/mini.pairs",
+    "nvim-mini/mini.pairs",
     version = false,
     event = "InsertEnter",
     opts = {

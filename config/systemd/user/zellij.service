@@ -1,0 +1,21 @@
+[Unit]
+Description=Zellij terminal multiplexer server (AI agent persistence)
+Documentation=https://zellij.dev/documentation/manpage.html
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment="DOTS=%h/dotfiles"
+Environment="ZELLIJ_CMD=%h/.local/bin/zellij"
+Environment="ZELLIJ_CONFIG_DIR=%h/.config/zellij"
+Environment="ZELLIJ_SESSION_DIR=%h/.local/share/zellij"
+Environment="PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStartPre=-/bin/sh -c 'mkdir -p %h/.local/share/zellij %h/.local/state/agents/registry'
+ExecStart=%h/dotfiles/scripts/zellij-service.sh daemon
+ExecStop=-%h/.local/bin/zellij delete-session --force zellij-daemon
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

@@ -56,7 +56,7 @@ WORKTREE_PATH="$(dirname "$REPO_ROOT")/${REPO_NAME}-${SLUG}"
 SESSION="${REPO_NAME}-${SLUG}"
 
 # Registry fields for the unified agent registry.
-REGISTER_ARGS=( "worktree=$WORKTREE_PATH" "branch=$BRANCH" "base=$BASE" "agent_cmd=$AGENT_CMD" "pid=$$" )
+REGISTER_ARGS=( "worktree=$WORKTREE_PATH" "branch=$BRANCH" "base=$BASE" "agent_cmd=$AGENT_CMD" "agent=$AGENT" "prompt=$PROMPT" "pid=$$" )
 
 # 1. Worktree (resume if it already exists)
 if git -C "$REPO_ROOT" worktree list | grep -qF "$WORKTREE_PATH"; then

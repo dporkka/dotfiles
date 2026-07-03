@@ -342,6 +342,20 @@ else
   success "TPM already installed"
 fi
 
+# Pre-install the plugins used by tmux.conf so persistence/copy/paste work
+# immediately, even before the user presses prefix + I inside tmux.
+log "Installing tmux plugins..."
+mkdir -p ~/.tmux/plugins
+for plugin in tmux-plugins/tmux-sensible tmux-plugins/tmux-resurrect tmux-plugins/tmux-continuum tmux-plugins/tmux-yank; do
+  name="$(basename "$plugin")"
+  if [[ ! -d "$HOME/.tmux/plugins/$name" ]]; then
+    git clone "https://github.com/$plugin" "$HOME/.tmux/plugins/$name"
+    success "$name installed"
+  else
+    success "$name already installed"
+  fi
+done
+
 # ---------------------------------------------------------------------------
 # 14. LOCALE — generate en_US.UTF-8 (prevents GTK/terminal locale warnings)
 # ---------------------------------------------------------------------------

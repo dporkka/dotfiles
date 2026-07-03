@@ -58,6 +58,8 @@ fi
   branch="${CURRENT_BRANCH:-}" \
   base="" \
   agent_cmd="$ZELLIJ_AGENT_CMD" \
+  agent="$AGENT" \
+  prompt="$EXTRA_ARGS" \
   pid="$$" 2>/dev/null || true
 
 # Create the session in the background from the current directory.

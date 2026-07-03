@@ -281,6 +281,7 @@ if command -v zellij &>/dev/null; then
   alias zn='zellij --session'
   alias zk='zellij delete-session'
   alias zka='zellij delete-all-sessions'
+  alias zsd='zellij-service.sh'
 fi
 
 # Docker
@@ -448,6 +449,25 @@ command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 # ---------------------------------------------------------------------------
 
 command -v starship &>/dev/null && eval "$(starship init zsh)"
+
+# ---------------------------------------------------------------------------
+# AGENT REGISTRY SHELL HOOKS
+# Keep the unified agent registry in sync with the current shell context.
+# precmd updates worktree/branch for the active tmux/Zellij session.
+# chpwd offers to resurrect a dead agent session when you cd back into its
+# worktree (set AGENT_AUTO_RESURRECT=true to resurrect automatically).
+# ---------------------------------------------------------------------------
+
+agent_precmd() { "$HOME/dotfiles/scripts/agent-shell-hook.sh" >/dev/null 2>&1 || true; }
+agent_chpwd()  { "$HOME/dotfiles/scripts/agent-shell-hook.sh" >/dev/null 2>&1 || true; }
+
+# Avoid duplicate registration if this file is re-sourced.
+if (( ! ${precmd_functions[(I)agent_precmd]} )); then
+  precmd_functions+=(agent_precmd)
+fi
+if (( ! ${chpwd_functions[(I)agent_chpwd]} )); then
+  chpwd_functions+=(agent_chpwd)
+fi
 
 # ---------------------------------------------------------------------------
 # LOCAL OVERRIDES — machine-specific config not in dotfiles

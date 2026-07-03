@@ -32,7 +32,7 @@ fi
 AGENT_CMD="$AGENT${EXTRA_ARGS:+ }${EXTRA_ARGS}"
 
 # Build registry key=value args.
-REGISTER_ARGS=( "worktree=$CWD" "agent_cmd=$AGENT_CMD" "pid=$$" )
+REGISTER_ARGS=( "worktree=$CWD" "agent_cmd=$AGENT_CMD" "agent=$AGENT" "prompt=$EXTRA_ARGS" "pid=$$" )
 [[ -n "$BRANCH" ]] && REGISTER_ARGS+=( "branch=$BRANCH" )
 
 echo "Starting agent session: $FULL_SESSION"
@@ -46,6 +46,7 @@ fi
 
 # Create isolated session
 tmux new-session -d -s "$FULL_SESSION" -c "$CWD"
+tmux set-option -t "$FULL_SESSION" @is_agent 1
 
 # Register this agent in the unified registry.
 "$HOME/dotfiles/scripts/agent-registry.sh" register "$FULL_SESSION" tmux "${REGISTER_ARGS[@]}"

@@ -184,6 +184,44 @@ This means:
 - After a system restart, Zellij can restore sessions if your terminal emulator / systemd unit supports it.
 - Background agent sessions survive accidental terminal closure.
 
+### tmux persistence
+
+tmux uses `tmux-resurrect` + `tmux-continuum` (managed by TPM). The companion script `scripts/tmux-agent-persistence.sh` snapshots the agent registry on every session change and reconciles it after a mass restore. After a reboot, attach tmux and press `C-a R` to clear stale PIDs and mark restored agent sessions as idle.
+
+---
+
+## Systemd service (user-local)
+
+A user systemd unit keeps the Zellij server alive independently of any terminal window, so background agent sessions are not killed when you close a terminal or log out.
+
+Install/link the unit (also done by `link-config.sh`):
+
+```bash
+zellij-service.sh install
+```
+
+Enable and start the service:
+
+```bash
+zellij-service.sh enable
+zellij-service.sh start
+```
+
+Check status:
+
+```bash
+zellij-service.sh status
+```
+
+What it does:
+
+- Runs a lightweight holder session named `zellij-daemon` using `config/zellij/layouts/daemon.kdl`.
+- The holder session is **not** registered in the agent registry, so it does not appear in dashboards.
+- If the Zellij server exits, the service restarts it (`Restart=on-failure`).
+- On service stop, the holder session is cleaned up.
+
+You can still use `zellij attach <session>` and all existing Zellij key bindings as usual.
+
 ---
 
 ## Unified agent registry
@@ -210,9 +248,61 @@ agent-registry.sh prune
 
 # Manual state override
 agent-registry.sh set-state <session> waiting
+
+# Snapshots — save/restore the whole registry for persistence/resurrection
+agent-registry.sh snapshot              # save a timestamped snapshot
+agent-registry.sh list-snapshots        # show available snapshots
+agent-registry.sh restore latest        # restore from the newest snapshot
+agent-registry.sh restore <name>        # restore a named snapshot
+agent-registry.sh resurrect --dry-run   # preview sessions that would be revived
+agent-registry.sh resurrect             # relaunch dead agent sessions from latest snapshot
 ```
 
 Fields stored per agent: `session`, `multiplexer`, `worktree`, `branch`, `base`, `agent_cmd`, `pid`, `state`, `started_at`, `updated_at`.
+
+### Registry snapshots
+
+Snapshots write the entire registry to `~/.local/state/agents/snapshots/<timestamp>.json`. They are the resurrection source of truth: even after a `prune`/`clear` or a multiplexer restart, you can restore records or relaunch dead sessions.
+
+A good habit is to snapshot before rebooting or before a big prune:
+
+```bash
+agent-registry.sh snapshot pre-reboot
+```
+
+### Manual resurrection with agent-resurrect.sh
+
+`scripts/agent-resurrect.sh` resurrects agents directly from the current registry records (no snapshot needed). It handles both tmux and Zellij, and both worktree agents and simple session agents:
+
+```bash
+# List dead-but-resurrectable agents
+agent-resurrect.sh list
+
+# Resurrect a specific agent by session name
+agent-resurrect.sh my-session
+
+# Preview what would be resurrected
+agent-resurrect.sh all --dry-run
+
+# Resurrect every eligible dead agent
+agent-resurrect.sh all
+```
+
+The script preserves the original session name, re-creates the worktree if it is missing, and restores the agent pane + watcher + review layout for worktree sessions.
+
+### Shell hooks
+
+`scripts/agent-shell-hook.sh` is wired into `~/.zshrc` via `precmd` and `chpwd`. It:
+
+- Updates the registry record for the current tmux/Zellij session when you change directory.
+- Detects when you `cd` back into an agent worktree whose session is dead and prints a resurrection hint.
+- Auto-resurrects dead sessions when `AGENT_AUTO_RESURRECT=true` is exported.
+
+To enable automatic resurrection, add this to `~/.zshrc.local`:
+
+```bash
+export AGENT_AUTO_RESURRECT=true
+```
 
 ## Agent state in the status bar
 
@@ -301,10 +391,12 @@ C-a a   # tmux agent dashboard
 ## Files
 
 - `~/dotfiles/config/zellij/config.kdl`
-- `~/dotfiles/config/zellij/layouts/{agent,dev,quad}.kdl`
+- `~/dotfiles/config/zellij/layouts/{agent,daemon,dev,quad}.kdl`
+- `~/dotfiles/config/systemd/user/zellij.service`
 - `~/dotfiles/scripts/zellij-agent-session.sh`
 - `~/dotfiles/scripts/zellij-agent-dashboard.sh`
 - `~/dotfiles/scripts/zellij-agent-worktree.sh`
 - `~/dotfiles/scripts/zellij-agent-session-prompt.sh`
 - `~/dotfiles/scripts/zellij-agent-worktree-prompt.sh`
+- `~/dotfiles/scripts/zellij-service.sh`
 - `~/dotfiles/scripts/agent-hook.sh` (shared with tmux)

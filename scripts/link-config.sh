@@ -53,7 +53,14 @@ done
 backup_then_link "$DOTS/config/starship/starship.toml" "$HOME/.config/starship.toml"
 backup_then_link "$DOTS/home/.zshrc" "$HOME/.zshrc"
 
+# User systemd unit for the Zellij background service (AI agent persistence).
+# Link only the specific unit rather than the whole systemd directory so other
+# user units (e.g. from home-manager) are not shadowed.
+mkdir -p "$HOME/.config/systemd/user"
+backup_then_link "$DOTS/config/systemd/user/zellij.service" "$HOME/.config/systemd/user/zellij.service"
+
 echo ""
 echo "Done. (mode: $MODE) Live config now symlinks to $DOTS — one edit, everywhere."
 echo "Note: live config follows the repo's checked-out branch. Secrets stay in"
 echo "      ~/.config/zsh/secrets.zsh (untracked). Remove old *.bak.* once happy."
+echo "      If this is the first install, run: zellij-service.sh enable && zellij-service.sh start"

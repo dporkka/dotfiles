@@ -24,11 +24,29 @@ zellij-agent-worktree.sh feat/payments "add MFA"
 zellij-agent-dashboard.sh         # unified tmux + Zellij dashboard
 zagent "refactor auth middleware"
 
+# Systemd persistence service (keeps Zellij alive across logout/reboot)
+zellij-service.sh install           # link unit file
+zellij-service.sh enable            # start on login
+zellij-service.sh start             # start now
+zellij-service.sh status            # check status
+
 # Unified registry
-agent-registry.sh list            # all agents
-agent-registry.sh list --json     # JSON output
-agent-registry.sh prune           # remove dead records
+agent-registry.sh list                  # all agents
+agent-registry.sh list --json           # JSON output
+agent-registry.sh prune                 # remove dead records
 agent-registry.sh set-state <session> waiting
+agent-registry.sh snapshot              # save timestamped snapshot
+agent-registry.sh list-snapshots        # list snapshots
+agent-registry.sh restore latest        # restore latest snapshot
+agent-registry.sh restore <name>        # restore named snapshot
+agent-registry.sh resurrect --dry-run   # preview dead sessions to revive
+agent-registry.sh resurrect             # relaunch dead sessions
+
+# Direct registry resurrection (no snapshot needed)
+agent-resurrect.sh list                 # dead-but-resurrectable agents
+agent-resurrect.sh <session>            # resurrect a specific agent
+agent-resurrect.sh all --dry-run        # preview all resurrections
+agent-resurrect.sh all                  # resurrect every eligible agent
 ```
 
 ---
@@ -86,6 +104,7 @@ agent-registry.sh set-state <session> waiting
 | Layout | Use case |
 |---|---|
 | `agent` | Agent + git watcher + review panes |
+| `daemon` | Systemd service holder (do not use manually) |
 | `dev` | Editor / terminal split |
 | `quad` | Editor + tests + agent + logs |
 

@@ -1,0 +1,28 @@
+// =============================================================================
+// daemon.kdl — minimal holder session for the Zellij systemd service
+//
+// The user systemd unit (config/systemd/user/zellij.service) keeps a Zellij
+// server alive by maintaining this daemon session. It does not run an agent;
+// it just sleeps so the server process stays around, allowing agent sessions
+// to survive terminal detachment and system reboots via Zellij serialization.
+//
+// This session is intentionally NOT registered in agent-registry.sh so it does
+// not appear in the unified agent dashboard.
+// =============================================================================
+
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="daemon" focus=true {
+        pane name="daemon" command="zsh" {
+            args "-c" "echo 'Zellij systemd service is running. Attach to agent sessions with: zellij attach <session>'; exec sleep infinity"
+        }
+    }
+}

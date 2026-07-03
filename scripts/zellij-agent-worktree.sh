@@ -84,6 +84,8 @@ if ! zellij list-sessions --no-formatting 2>/dev/null | awk '{print $1}' | grep 
     branch="$BRANCH" \
     base="$BASE" \
     agent_cmd="$AGENT_CMD_DISPLAY" \
+    agent="$AGENT" \
+    prompt="$PROMPT" \
     pid="$$" 2>/dev/null || true
 
   (cd "$WORKTREE_PATH" && zellij --layout "$LAYOUT" attach -b "$SESSION")

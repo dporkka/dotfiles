@@ -233,6 +233,7 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 | `C-a g` | lazygit popup · `C-a t` shell popup |
 | `C-a S` | Session switcher · `M-1..9` jump to window |
 | `C-a r` | Reload config · `prefix + I/U` TPM install/update |
+| `C-a R` | Reconcile tmux agent registry after a mass restore (resurrect/continuum) |
 
 ### Zellij (primary multiplexer)
 
@@ -306,7 +307,7 @@ zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
 
 **Mission control — which agent needs me?**
 
-- **`C-a a`** → fzf dashboard of every agent window across *all* sessions, with a
+- **`C-a a`** / **`Alt d`** → fzf dashboard of every agent window across *all* sessions, with a
   live pane preview; Enter jumps to it.
 - Status bar shows **`⚡N waiting / ✓N done`** across all sessions; window tabs get
   ⚡/✓ glyphs.
@@ -316,6 +317,15 @@ zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
   pane, so active pairing stays quiet.
 - ⚠️ The hooks live in **`~/.claude/settings.json` — machine-local, NOT in this repo** —
   so re-add them after cloning onto a new machine.
+
+**Persistence & resurrection**
+
+- The unified registry is snapshotted with `agent-registry.sh snapshot` and stored under
+  `~/.local/state/agents/snapshots/`. Restore with `agent-registry.sh restore latest` or
+  relaunch dead sessions with `agent-registry.sh resurrect --dry-run` / `resurrect`.
+- A shell hook (`scripts/agent-shell-hook.sh`) runs on every `precmd`/`chpwd` to keep
+  registry worktree/branch metadata in sync. Set `AGENT_AUTO_RESURRECT=true` to
+  automatically revive a dead agent session when you `cd` back into its worktree.
 
 **Review** each agent's work in Neovim with **`Space gm`** → diffview of `main...HEAD`
 (the whole branch diff), or open its `review` window.

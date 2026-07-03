@@ -1,49 +1,90 @@
 #!/usr/bin/env bash
 # =============================================================================
-# agent-dashboard.sh — fzf "mission control" for every running agent.
+# agent-dashboard.sh — unified fzf "mission control" for every running agent.
 #
-# Lists each agent window across all sessions with its state and a LIVE pane
-# preview; Enter jumps straight to it. Bound to `prefix a` (see tmux.conf).
-#
-# An agent window is one whose session has @is_agent set (spawned via
-# agent-worktree.sh) OR any window where @agent_state is set (a Claude Code
-# hook has fired — see agent-hook.sh). So both managed and ad-hoc `claude`
-# panes show up.
+# Lists every agent recorded in ~/.local/state/agents/registry/, regardless of
+# whether it lives in tmux or Zellij. Enter jumps straight to it.
+# Bound to `prefix a` in tmux.conf and `Alt d` / `Ctrl-b a` in config.kdl.
 # =============================================================================
 set -euo pipefail
 
-command -v fzf >/dev/null 2>&1 || { tmux display-message "agent-dashboard: fzf not found"; exit 0; }
+REGISTRY="${DOTS:-$HOME/dotfiles}/scripts/agent-registry.sh"
 
-rows="$(tmux list-windows -a -F \
-  '#{session_name}:#{window_index}|#{@agent_state}|#{@is_agent}|#{window_name}|#{pane_current_path}' \
-  2>/dev/null || true)"
+# Preview mode: invoked by fzf with the selected line as the second argument.
+if [[ "${1:-}" == "--preview" ]]; then
+  line="${2:-}"
+  [[ -n "$line" ]] || exit 0
+  session="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $1); print $1}' <<< "$line")"
+  mux="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $2); print $2}' <<< "$line")"
+  case "$mux" in
+    tmux)
+      tmux capture-pane -ep -t "${session}:1" 2>/dev/null \
+        || echo "tmux session '${session}' not reachable"
+      ;;
+    zellij)
+      zellij --session "$session" action list-tabs 2>/dev/null \
+        || echo "zellij session '${session}' not reachable"
+      ;;
+    *)
+      echo "unknown multiplexer: $mux"
+      ;;
+  esac
+  exit 0
+fi
 
-format() {
-  local target state isagent name path glyph
-  while IFS='|' read -r target state isagent name path; do
-    [ -n "$target" ] || continue
-    [ -n "$state" ] || [ "$isagent" = "1" ] || continue   # agent windows only
-    case "$state" in
-      waiting) glyph="⚡ waiting" ;;
-      working) glyph="•  working" ;;
-      done)    glyph="✓  done" ;;
-      *)       glyph="·  idle" ;;
-    esac
-    printf '%s\t%s\t%s\t%s\n' "$target" "$glyph" "$name" "${path/#$HOME/~}"
-  done
-}
+command -v jq >/dev/null 2>&1 || { echo "agent-dashboard: jq required" >&2; exit 0; }
+command -v fzf >/dev/null 2>&1 || { echo "agent-dashboard: fzf not found" >&2; exit 0; }
 
-table="$(printf '%s\n' "$rows" | format)"
-[ -n "$table" ] || { tmux display-message "no agents running"; exit 0; }
+# Drop stale records so the dashboard reflects reality.
+"$REGISTRY" prune >/dev/null 2>&1 || true
 
-sel="$(printf '%s\n' "$table" | column -t -s $'\t' \
+records="$("$REGISTRY" list --json 2>/dev/null || echo '[]')"
+[[ "$records" != "[]" ]] || { echo "no agents running"; exit 0; }
+
+# Build display lines: session<TAB>mux<TAB>state-glyph<TAB>name<TAB>worktree<TAB>agent_cmd
+lines="$(jq -r --arg home "$HOME" '.[] | [
+  .session,
+  .multiplexer,
+  (.state |
+    if . == "waiting" then "⚡ waiting"
+    elif . == "working" then "•  working"
+    elif . == "done" then "✓  done"
+    elif . == "exited" then "✗  exited"
+    else "·  idle"
+    end),
+  (.branch // .session),
+  (.worktree // "-" | sub("^" + $home + "/"; "~/")),
+  (.agent_cmd // "-")
+] | @tsv' <<< "$records" 2>/dev/null || true)"
+
+[[ -n "$lines" ]] || { echo "no agents running"; exit 0; }
+
+sel="$(printf '%s\n' "$lines" \
   | fzf --prompt='agent> ' --no-multi --no-sort \
-        --header='enter: jump   ·   ⚡ needs you   ✓ done   • working' \
-        --preview 'tmux capture-pane -ep -t "$(echo {} | awk "{print \$1}")"' \
+        --header='enter: jump   ·   ⚡ waiting   ✓ done   • working   ✗ exited   · idle' \
+        --delimiter '\t' \
+        --preview "$0 --preview {}" \
         --preview-window=down:65%:wrap || true)"
 
-[ -n "$sel" ] || exit 0
-target="$(echo "$sel" | awk '{print $1}')"
-session="${target%%:*}"
-tmux switch-client -t "$session" 2>/dev/null || tmux attach -t "$session" 2>/dev/null || true
-tmux select-window -t "$target" 2>/dev/null || true
+[[ -n "$sel" ]] || exit 0
+
+session="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $1); print $1}' <<< "$sel")"
+mux="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $2); print $2}' <<< "$sel")"
+
+case "$mux" in
+  tmux)
+    if [[ -n "${TMUX:-}" ]]; then
+      tmux switch-client -t "$session" 2>/dev/null || true
+      tmux select-window -t "${session}:1" 2>/dev/null || true
+    else
+      tmux attach -t "$session" 2>/dev/null || true
+    fi
+    ;;
+  zellij)
+    if [[ -n "${ZELLIJ:-}" ]]; then
+      zellij action switch-session "$session" 2>/dev/null || true
+    else
+      zellij attach "$session" 2>/dev/null || true
+    fi
+    ;;
+esac

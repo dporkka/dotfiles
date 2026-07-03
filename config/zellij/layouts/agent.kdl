@@ -1,0 +1,44 @@
+// =============================================================================
+// agent.kdl — AI agent session layout
+//
+// Layout:
+//   agent (left 50%) | watch (top-right 25%) / review (bottom-right 25%)
+//
+// Mirrors the tmux agent-session.sh workflow:
+//   - agent pane runs the chosen agent CLI (defaults to claude) and marks the
+//     registry record as exited when the agent finishes
+//   - watch pane polls git status/diff
+//   - review pane is ready for git diff, lazygit, nvim
+//
+// Usage:
+//   zellij --session my-agent --layout agent
+//   # or via helper script:
+//   ~/dotfiles/scripts/zellij-agent-session.sh my-agent claude
+// =============================================================================
+
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+        children
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+    tab name="agent" focus=true {
+        pane split_direction="vertical" {
+            pane name="agent" size="50%" focus=true command="zsh" {
+                args "-c" "${ZELLIJ_AGENT_CMD:-claude}; $HOME/dotfiles/scripts/agent-registry.sh set-state \"${ZELLIJ_SESSION_NAME:-agent}\" exited >/dev/null 2>&1 || true; $HOME/dotfiles/scripts/notify.sh 'Agent finished' 'zellij session ${ZELLIJ_SESSION_NAME:-agent}'"
+            }
+            pane split_direction="horizontal" size="50%" {
+                pane name="watch" size="50%" command="zsh" {
+                    args "-c" "watch -n 2 'git status -sb && echo \"---\" && git diff --stat'"
+                }
+                pane name="review" size="50%" command="zsh" {
+                    args "-c" "echo '# Review window — run: git diff, lazygit, nvim'; exec zsh -i"
+                }
+            }
+        }
+    }
+}

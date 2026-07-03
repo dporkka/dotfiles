@@ -5,7 +5,7 @@
 return {
   -- Mason: install LSP servers, linters, formatters
   {
-    "williamboman/mason.nvim",
+    "mason-org/mason.nvim",
     opts = {
       ui = { border = "rounded" },
       -- Installed tools beyond what LazyVim manages
@@ -145,6 +145,39 @@ return {
           },
         },
 
+        -- Go
+        gopls = {
+          settings = {
+            gopls = {
+              analyses = {
+                unusedparams = true,
+                shadow = true,
+              },
+              staticcheck = true,
+              gofumpt = false,  -- conform runs gofmt/goimports; disable LSP formatting
+              usePlaceholders = true,
+              completeUnimported = true,
+            },
+          },
+        },
+
+        -- Rust
+        rust_analyzer = {
+          settings = {
+            ["rust-analyzer"] = {
+              check = {
+                command = "clippy",
+              },
+              cargo = {
+                loadOutDirsFromCheck = true,
+              },
+              procMacro = {
+                enable = true,
+              },
+            },
+          },
+        },
+
         -- Python
         pyright = {
           settings = {
@@ -200,6 +233,20 @@ return {
         -- sqls = {},
       },
     },
+    init = function()
+      -- Disable semantic tokens for large files (>1 MB) to keep LSP responsive
+      -- when AI agents open generated artifacts or huge logs.
+      vim.api.nvim_create_autocmd("LspAttach", {
+        group = vim.api.nvim_create_augroup("large_file_lsp", { clear = true }),
+        callback = function(args)
+          if not vim.b[args.buf].large_file then return end
+          local client = vim.lsp.get_client_by_id(args.data.client_id)
+          if client and client.server_capabilities then
+            client.server_capabilities.semanticTokensProvider = nil
+          end
+        end,
+      })
+    end,
   },
 
   -- SchemaStore for JSON/YAML schemas

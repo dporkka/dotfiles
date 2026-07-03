@@ -17,7 +17,7 @@ truth: configs are **symlinked** into `~/.config`, so editing the repo edits you
 | **AI in editor** | **avante.nvim** (Cursor-style, `<leader>a`) · **claudecode.nvim** (`<leader>k`) · **supermaven** ghost-text · **mcphub.nvim** (MCP tools for avante) |
 | **AI in terminal** | Claude Code CLI · git-worktree + tmux agent isolation · `agent-session.sh` (pings you when an agent finishes) |
 | **MCP** | One blueprint (`config/mcp/servers.json`) → both Claude Code *and* avante. 6 core local servers: filesystem, memory, sequential-thinking, fetch, git, time |
-| **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
+| **Multiplexer** | Zellij 0.44+ (primary) · tmux 3.x preserved for existing workflows — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
 | **Terminal** | Ghostty (local machine only) |
 | **Shell** | zsh + starship; secrets kept out of the repo |
 
@@ -69,6 +69,105 @@ bash ~/dotfiles/scripts/link-config.sh
 > **The symlink model:** `~/.config/{nvim,tmux,ghostty}`, `~/.zshrc`, and `~/.config/starship.toml`
 > are symlinks into this repo. Edit the repo, changes are live immediately — no copy/sync step.
 > Live config follows the repo's **checked-out branch**, so keep `main` checked out for daily use.
+
+---
+
+## Nix + home-manager
+
+This repo is also a Nix flake. It uses [home-manager](https://github.com/nix-community/home-manager) to install your daily tools and exposes reusable `devShells` for Go, Rust, Node/TypeScript, and Python projects.
+
+### Why Nix?
+
+- **Reproducible.** The exact same tools and versions install on every machine — your laptop, a VPS, WSL, or a fresh VM.
+- **Declarative.** Your environment is code. Add a tool to `home.nix` or a shell to `shells.nix`, run one command, and it’s there.
+- **Isolated dev shells.** Jump into a project and get only the toolchain it needs, without conflicting with your global packages or other projects.
+- **Atomic rollbacks.** home-manager keeps generations. If an update breaks something, roll back in seconds.
+- **No more install scripts.** Stop running `curl | bash` or manually juggling `fnm`, `mise`, `rustup`, and language servers. Nix provides them all.
+- **Works alongside this repo.** Your existing shell configs (`~/.zshrc`, `~/.bashrc`, etc.) stay in place. The flake only adds packages.
+
+### Quick start
+
+1. **Install Nix** (single-user mode works on Fedora even with SELinux):
+   ```bash
+   sudo mkdir -m 0755 /nix && sudo chown $USER /nix
+   sh <(curl -L https://nixos.org/nix/install) --no-daemon
+   . ~/.nix-profile/etc/profile.d/nix.sh
+   ```
+
+2. **Enable flakes**:
+   ```bash
+   mkdir -p ~/.config/nix
+   echo "experimental-features = nix-command flakes" >> ~/.config/nix/nix.conf
+   ```
+
+3. **Apply the home configuration**:
+   ```bash
+   cd ~/dotfiles
+   nix run home-manager -- switch -b backup --flake .#$USER
+   ```
+
+4. **Enter a dev shell**:
+   ```bash
+   nix develop ~/dotfiles#default  # everyday CLI tools
+   nix develop ~/dotfiles#go       # Go + gopls + delve + golangci-lint
+   nix develop ~/dotfiles#rust     # Rust + cargo + clippy + rust-analyzer
+   nix develop ~/dotfiles#node     # Node + TypeScript + biome + prettierd
+   nix develop ~/dotfiles#python   # Python + uv + ruff + pyright + pytest
+   nix develop ~/dotfiles#full     # all of the above combined
+   ```
+
+### What it manages
+
+- **home-manager** installs common packages: `git`, `just`, `tmux`, `tmuxp`, `zellij`, `fzf`, `zoxide`, `starship`, `eza`, `bat`, `ripgrep`, `fd`, `jq`, `yq-go`, `delta`, `lazygit`, `gh`, `direnv`, `nix-direnv`, `nixfmt`, `uv`, `nodejs`, `go`, `rustc`, `cargo`, `neovim`, `wget`, `curl`, `tree`, `htop`, `btop`, `unzip`, `zip`.
+- **Existing shell configs are preserved.** `~/.bashrc`, `~/.zshrc`, `~/.profile`, and `~/.bash_profile` are left untouched. `direnv` is installed but not auto-hooked, so add `eval "$(direnv hook zsh)"` (or `bash`) to your shell config if you want directory-local env loading.
+- **Dev shells** give you project-specific toolchains without polluting the global environment. Use them for the repos that don’t have their own flake (or as a quick fallback).
+
+### Everyday commands
+
+```bash
+# Re-apply after editing home.nix or shells.nix
+cd ~/dotfiles
+nix run home-manager -- switch -b backup --flake .#$USER
+
+# Check the flake for errors without building anything
+nix flake check --no-build
+
+# Update all flake inputs to their latest versions
+nix flake update
+
+# See home-manager generations and roll back if needed
+home-manager generations
+home-manager switch --flake .#$USER --generation <id>
+home-manager switch --rollback
+
+# Use with existing per-project flakes
+# beads_viewer and bifrost already have their own flake.nix files.
+# Enter them directly:
+cd ~/beads_viewer && nix develop   # Go dev shell for bv
+cd ~/bifrost && nix develop        # Bifrost dev shell
+```
+
+### Customizing
+
+- **Add a global package:** edit `home.nix`, add the package name inside `home.packages`, then re-run `home-manager switch`.
+- **Add a dev shell:** edit `shells.nix`, create a new package list and add it to the output set, then `nix develop .#<name>`.
+- **Pin/unpin nixpkgs:** change the `nixpkgs.url` in `flake.nix`. Run `nix flake update` to regenerate `flake.lock`.
+
+### Files
+
+| File | Purpose |
+|---|---|
+| `flake.nix` | Flake inputs, home-manager configuration, dev shell outputs |
+| `home.nix` | User packages and basic home-manager settings |
+| `shells.nix` | `default`, `go`, `rust`, `node`, `python`, `full` dev shells |
+| `flake.lock` | Locked dependency versions |
+
+---
+
+## Documentation
+
+- **[Zellij Setup Guide](docs/zellij.md)** — install, layouts, AI-agent workflows, key bindings, and migration tips from tmux.
+- **[Zellij Cheatsheet](docs/zellij-cheatsheet.md)** — one-page command/key/layout reference.
 
 ---
 
@@ -134,6 +233,23 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 | `C-a g` | lazygit popup · `C-a t` shell popup |
 | `C-a S` | Session switcher · `M-1..9` jump to window |
 | `C-a r` | Reload config · `prefix + I/U` TPM install/update |
+| `C-a R` | Reconcile tmux agent registry after a mass restore (resurrect/continuum) |
+
+### Zellij (primary multiplexer)
+
+| Key | Action |
+|---|---|
+| `Ctrl b` | Enter tmux-emulation mode (then `\|`, `-`, `c`, `hjkl`, etc.) |
+| `Alt h/j/k/l` | Move focus between panes/tabs |
+| `Alt n` | New pane · `Alt f` toggle floating panes |
+| `Ctrl t` / `Ctrl p` / `Ctrl n` / `Ctrl o` | Tab / pane / resize / session mode |
+| `Ctrl o` `w` | Session manager popup |
+| `Alt a` | **Agent session manager** popup |
+| `Alt Shift a` | **Spawn agent session** (prompts for name/agent) |
+| `Alt w` | **Spawn agent worktree** (prompts for branch/base/agent) |
+| `Alt d` | **Agent dashboard** — fzf over running Zellij agent sessions |
+| `zellij --layout agent --session <name>` | Spawn an AI agent session layout |
+| `zellij --layout dev` / `quad` | Dev or quad pane layout |
 
 ### Neovim (leader = `Space`)
 
@@ -181,11 +297,17 @@ agent-worktree.sh feat/payments "add MFA to the login form"   # prompt is option
 # Just a worktree, no agent:   new-worktree.sh feat/x main
 # Dedicated agent session (editor/watch/review), pings on process exit:
 agent-session.sh refactor-auth claude
+
+# Zellij equivalents (coexist with tmux):
+zwork ~/dev/myproject                    # jump to / create a zellij session
+zellij-agent-session.sh refactor-auth claude
+zellij-agent-dashboard.sh                # fzf mission control for zellij agents
+zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
 ```
 
 **Mission control — which agent needs me?**
 
-- **`C-a a`** → fzf dashboard of every agent window across *all* sessions, with a
+- **`C-a a`** / **`Alt d`** → fzf dashboard of every agent window across *all* sessions, with a
   live pane preview; Enter jumps to it.
 - Status bar shows **`⚡N waiting / ✓N done`** across all sessions; window tabs get
   ⚡/✓ glyphs.
@@ -195,6 +317,15 @@ agent-session.sh refactor-auth claude
   pane, so active pairing stays quiet.
 - ⚠️ The hooks live in **`~/.claude/settings.json` — machine-local, NOT in this repo** —
   so re-add them after cloning onto a new machine.
+
+**Persistence & resurrection**
+
+- The unified registry is snapshotted with `agent-registry.sh snapshot` and stored under
+  `~/.local/state/agents/snapshots/`. Restore with `agent-registry.sh restore latest` or
+  relaunch dead sessions with `agent-registry.sh resurrect --dry-run` / `resurrect`.
+- A shell hook (`scripts/agent-shell-hook.sh`) runs on every `precmd`/`chpwd` to keep
+  registry worktree/branch metadata in sync. Set `AGENT_AUTO_RESURRECT=true` to
+  automatically revive a dead agent session when you `cd` back into its worktree.
 
 **Review** each agent's work in Neovim with **`Space gm`** → diffview of `main...HEAD`
 (the whole branch diff), or open its `review` window.

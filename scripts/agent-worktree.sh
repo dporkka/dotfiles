@@ -40,6 +40,12 @@ done
   || { echo "Usage: agent-worktree.sh <branch> [prompt...] [--base b] [--agent cmd]" >&2; exit 2; }
 PROMPT="${PROMPT_WORDS[*]:-}"
 
+AGENT_CMD="$AGENT"
+[[ -n "$PROMPT" ]] && AGENT_CMD="$AGENT_CMD $PROMPT"
+# Shell-escaped version for tmux send-keys (the pane's shell unescapes it).
+AGENT_CMD_ESCAPED="$AGENT"
+[[ -n "$PROMPT" ]] && AGENT_CMD_ESCAPED="$AGENT_CMD_ESCAPED $(printf '%q' "$PROMPT")"
+
 command -v tmux >/dev/null 2>&1 || { echo "tmux required" >&2; exit 1; }
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" \
   || { echo "not in a git repository" >&2; exit 1; }
@@ -48,6 +54,9 @@ REPO_NAME="$(basename "$REPO_ROOT")"
 SLUG="${BRANCH//\//-}"
 WORKTREE_PATH="$(dirname "$REPO_ROOT")/${REPO_NAME}-${SLUG}"
 SESSION="${REPO_NAME}-${SLUG}"
+
+# Registry fields for the unified agent registry.
+REGISTER_ARGS=( "worktree=$WORKTREE_PATH" "branch=$BRANCH" "base=$BASE" "agent_cmd=$AGENT_CMD" "agent=$AGENT" "prompt=$PROMPT" "pid=$$" )
 
 # 1. Worktree (resume if it already exists)
 if git -C "$REPO_ROOT" worktree list | grep -qF "$WORKTREE_PATH"; then
@@ -72,15 +81,15 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
   tmux new-session -d -s "$SESSION" -c "$WORKTREE_PATH"
   tmux set-option -t "$SESSION" @is_agent 1
 
+  # Register this agent in the unified registry.
+  "$HOME/dotfiles/scripts/agent-registry.sh" register "$SESSION" tmux "${REGISTER_ARGS[@]}"
+  "$HOME/dotfiles/scripts/agent-registry.sh" set-state "$SESSION" idle
+
   # Window 1: agent. monitor-silence is a fallback "went quiet" signal for
   # agents without Claude Code hooks (e.g. aider); Claude sets @agent_state.
   tmux rename-window -t "$SESSION:1" "agent"
   tmux set-window-option -t "$SESSION:1" monitor-silence 20
-  if [[ -n "$PROMPT" ]]; then
-    tmux send-keys -t "$SESSION:1" "$AGENT $(printf '%q' "$PROMPT")" Enter
-  else
-    tmux send-keys -t "$SESSION:1" "$AGENT" Enter
-  fi
+  tmux send-keys -t "$SESSION:1" "$AGENT_CMD_ESCAPED; \$HOME/dotfiles/scripts/agent-registry.sh set-state \"$SESSION\" exited" Enter
 
   # Window 2: editor
   tmux new-window -t "$SESSION" -n "editor" -c "$WORKTREE_PATH"

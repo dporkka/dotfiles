@@ -274,6 +274,16 @@ alias tls='tmux ls'
 alias tn='tmux new -s'
 alias tk='tmux kill-session -t'
 
+# zellij (coexists with tmux; use z-prefixed aliases)
+if command -v zellij &>/dev/null; then
+  alias za='zellij attach'
+  alias zl='zellij list-sessions'
+  alias zn='zellij --session'
+  alias zk='zellij delete-session'
+  alias zka='zellij delete-all-sessions'
+  alias zsd='zellij-service.sh'
+fi
+
 # Docker
 alias d='docker'
 alias dc='docker compose'
@@ -345,6 +355,36 @@ agent() {
   fi
 }
 
+# Start a new zellij session for a project (mirrors work() for tmux)
+zwork() {
+  if ! command -v zellij &>/dev/null; then
+    echo "zellij not found" >&2
+    return 1
+  fi
+  local session="${1:-$(basename "$PWD")}"
+  local cwd="${2:-$PWD}"
+  if zellij list-sessions 2>/dev/null | grep -q "^${session} "; then
+    zellij attach "$session"
+  else
+    cd "$cwd" && zellij --session "$session"
+  fi
+}
+
+# Quick Claude Code agent session in a new zellij tab
+zagent() {
+  if ! command -v zellij &>/dev/null; then
+    echo "zellij not found" >&2
+    return 1
+  fi
+  local task="${1:-}"
+  local tab_name="agent-$(date +%H%M%S)"
+  if [[ -n "$task" ]]; then
+    zellij run --name "$tab_name" -- claude --task "$task"
+  else
+    zellij run --name "$tab_name" -- claude
+  fi
+}
+
 # Open file/URL from WSL in Windows
 open() {
   if [[ -f "$1" ]]; then
@@ -409,6 +449,25 @@ command -v direnv &>/dev/null && eval "$(direnv hook zsh)"
 # ---------------------------------------------------------------------------
 
 command -v starship &>/dev/null && eval "$(starship init zsh)"
+
+# ---------------------------------------------------------------------------
+# AGENT REGISTRY SHELL HOOKS
+# Keep the unified agent registry in sync with the current shell context.
+# precmd updates worktree/branch for the active tmux/Zellij session.
+# chpwd offers to resurrect a dead agent session when you cd back into its
+# worktree (set AGENT_AUTO_RESURRECT=true to resurrect automatically).
+# ---------------------------------------------------------------------------
+
+agent_precmd() { "$HOME/dotfiles/scripts/agent-shell-hook.sh" >/dev/null 2>&1 || true; }
+agent_chpwd()  { "$HOME/dotfiles/scripts/agent-shell-hook.sh" >/dev/null 2>&1 || true; }
+
+# Avoid duplicate registration if this file is re-sourced.
+if (( ! ${precmd_functions[(I)agent_precmd]} )); then
+  precmd_functions+=(agent_precmd)
+fi
+if (( ! ${chpwd_functions[(I)agent_chpwd]} )); then
+  chpwd_functions+=(agent_chpwd)
+fi
 
 # ---------------------------------------------------------------------------
 # LOCAL OVERRIDES — machine-specific config not in dotfiles

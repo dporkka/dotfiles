@@ -23,8 +23,20 @@ CWD="${PWD}"
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 FULL_SESSION="${SESSION}-${TIMESTAMP}"
 
+# Capture git context for the registry (best-effort).
+BRANCH=""
+if command -v git >/dev/null 2>&1 && git -C "$CWD" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  BRANCH="$(git -C "$CWD" branch --show-current 2>/dev/null || true)"
+fi
+
+AGENT_CMD="$AGENT${EXTRA_ARGS:+ }${EXTRA_ARGS}"
+
+# Build registry key=value args.
+REGISTER_ARGS=( "worktree=$CWD" "agent_cmd=$AGENT_CMD" "agent=$AGENT" "prompt=$EXTRA_ARGS" "pid=$$" )
+[[ -n "$BRANCH" ]] && REGISTER_ARGS+=( "branch=$BRANCH" )
+
 echo "Starting agent session: $FULL_SESSION"
-echo "Agent: $AGENT $EXTRA_ARGS"
+echo "Agent: $AGENT_CMD"
 echo "Working directory: $CWD"
 
 if ! command -v tmux &>/dev/null; then
@@ -34,11 +46,16 @@ fi
 
 # Create isolated session
 tmux new-session -d -s "$FULL_SESSION" -c "$CWD"
+tmux set-option -t "$FULL_SESSION" @is_agent 1
+
+# Register this agent in the unified registry.
+"$HOME/dotfiles/scripts/agent-registry.sh" register "$FULL_SESSION" tmux "${REGISTER_ARGS[@]}"
+"$HOME/dotfiles/scripts/agent-registry.sh" set-state "$FULL_SESSION" idle
 
 # Window 1: Agent — run it, then ping when it exits (bell + tmux msg + WSL toast).
 # \$HOME stays literal so the pane's own shell expands it at runtime.
 tmux rename-window -t "$FULL_SESSION:1" "agent"
-tmux send-keys -t "$FULL_SESSION:1" "$AGENT $EXTRA_ARGS; \$HOME/dotfiles/scripts/notify.sh 'Agent finished: $SESSION' 'tmux session $FULL_SESSION'" Enter
+tmux send-keys -t "$FULL_SESSION:1" "$AGENT_CMD; \$HOME/dotfiles/scripts/agent-registry.sh set-state \"$FULL_SESSION\" exited; \$HOME/dotfiles/scripts/notify.sh 'Agent finished: $SESSION' 'tmux session $FULL_SESSION'" Enter
 
 # Window 2: Monitoring — watch files the agent is changing
 tmux new-window -t "$FULL_SESSION" -n "watch" -c "$CWD"

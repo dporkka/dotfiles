@@ -32,7 +32,6 @@ return {
         javascript = { "biome", "prettier", stop_after_first = true },
         javascriptreact = { "biome", "prettier", stop_after_first = true },
         json = { "biome", "prettier", stop_after_first = true },
-        jsonc = { "biome", "prettier", stop_after_first = true },
 
         -- Web
         css = { "prettier" },
@@ -67,6 +66,15 @@ return {
         if vim.b[bufnr].large_file then
           return
         end
+        -- Disable for special buffers and AI/diff windows
+        local bt = vim.bo[bufnr].buftype
+        if bt ~= "" then
+          return
+        end
+        local ft = vim.bo[bufnr].filetype
+        if ft == "Avante" or ft == "claudecode" or ft == "DiffviewFiles" then
+          return
+        end
         -- Disable for specific buffers
         if vim.g.disable_autoformat or vim.b[bufnr].disable_autoformat then
           return
@@ -82,6 +90,9 @@ return {
           -- Biome is a Rust-based formatter/linter, much faster than prettier
           -- Only runs if biome.json exists in the project root
           require_cwd = true,
+          cwd = function(ctx)
+            return require("conform.util").root_file({ "biome.json", "biome.jsonc" })(ctx)
+          end,
           condition = function(_, ctx)
             return vim.fs.find(
               { "biome.json", "biome.jsonc" },
@@ -91,6 +102,18 @@ return {
         },
         prettier = {
           require_cwd = false,
+          cwd = function(ctx)
+            return require("conform.util").root_file({
+              ".prettierrc",
+              ".prettierrc.json",
+              ".prettierrc.js",
+              ".prettierrc.cjs",
+              ".prettierrc.mjs",
+              "prettier.config.js",
+              "prettier.config.mjs",
+              "package.json",
+            })(ctx)
+          end,
           -- Use project-local prettier if available
           condition = function(_, ctx)
             -- Run prettier if there's a config file or if biome isn't available

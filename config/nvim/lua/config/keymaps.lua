@@ -104,10 +104,26 @@ map("n", "<leader>gw", "<cmd>FzfLua git_status<cr>", { desc = "Git status" })
 
 -- Exit terminal insert mode with Esc
 map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
-map("t", "<C-h>", "<cmd>wincmd h<cr>", opts)
-map("t", "<C-j>", "<cmd>wincmd j<cr>", opts)
-map("t", "<C-k>", "<cmd>wincmd k<cr>", opts)
-map("t", "<C-l>", "<cmd>wincmd l<cr>", opts)
+
+-- Terminal-mode pane navigation: prefer multiplexer-aware commands when available,
+-- otherwise fall back to plain Neovim window movement.
+local function term_nav(direction)
+  return function()
+    local cmd
+    if vim.env.ZELLIJ ~= nil then
+      cmd = "ZellijNavigate" .. direction:gsub("^%l", string.upper)
+    elseif vim.env.TMUX ~= nil then
+      cmd = "TmuxNavigate" .. direction:gsub("^%l", string.upper)
+    else
+      cmd = "wincmd " .. direction
+    end
+    vim.cmd(cmd)
+  end
+end
+map("t", "<C-h>", term_nav("h"), { desc = "Navigate left (term)" })
+map("t", "<C-j>", term_nav("j"), { desc = "Navigate down (term)" })
+map("t", "<C-k>", term_nav("k"), { desc = "Navigate up (term)" })
+map("t", "<C-l>", term_nav("l"), { desc = "Navigate right (term)" })
 
 -- ---------------------------------------------------------------------------
 -- UTILITIES

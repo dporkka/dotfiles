@@ -95,7 +95,7 @@ opt.pumblend = 10           -- popup transparency
 -- FOLDS — use Treesitter-based folding
 -- ---------------------------------------------------------------------------
 
-opt.foldmethod = "manual"
+opt.foldmethod = "expr"
 opt.foldexpr = "v:lua.vim.treesitter.foldexpr()"
 opt.foldlevel = 99          -- start fully unfolded
 opt.foldlevelstart = 99

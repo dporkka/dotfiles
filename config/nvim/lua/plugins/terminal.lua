@@ -14,6 +14,9 @@ return {
   -- ---------------------------------------------------------------------------
   {
     "christoomey/vim-tmux-navigator",
+    cond = function()
+      return vim.env.TMUX ~= nil and vim.env.ZELLIJ == nil
+    end,
     init = function()
       vim.g.tmux_navigator_no_mappings = 1
     end,
@@ -29,6 +32,28 @@ return {
       { "<C-j>", "<cmd>TmuxNavigateDown<cr>",  desc = "Navigate down (nvim/tmux)" },
       { "<C-k>", "<cmd>TmuxNavigateUp<cr>",    desc = "Navigate up (nvim/tmux)" },
       { "<C-l>", "<cmd>TmuxNavigateRight<cr>", desc = "Navigate right (nvim/tmux)" },
+    },
+  },
+
+  -- ---------------------------------------------------------------------------
+  -- ZELLIJ-NAV.NVIM — same idea for Zellij panes.
+  -- Loaded only when $ZELLIJ is set so it doesn't fight with vim-tmux-navigator.
+  -- Requires no changes to Zellij config; it talks to Zellij over the control
+  -- pipe. In terminal mode, <C-hjkl> still moves between Neovim splits and hands
+  -- off at pane edges.
+  -- ---------------------------------------------------------------------------
+  {
+    "swaits/zellij-nav.nvim",
+    cond = function()
+      return vim.env.ZELLIJ ~= nil
+    end,
+    lazy = true,
+    event = "VeryLazy",
+    keys = {
+      { "<C-h>", "<cmd>ZellijNavigateLeft<cr>",  desc = "Navigate left (nvim/zellij)" },
+      { "<C-j>", "<cmd>ZellijNavigateDown<cr>",  desc = "Navigate down (nvim/zellij)" },
+      { "<C-k>", "<cmd>ZellijNavigateUp<cr>",    desc = "Navigate up (nvim/zellij)" },
+      { "<C-l>", "<cmd>ZellijNavigateRight<cr>", desc = "Navigate right (nvim/zellij)" },
     },
   },
 

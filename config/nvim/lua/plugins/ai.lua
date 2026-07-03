@@ -6,12 +6,10 @@
 
 return {
   -- ---------------------------------------------------------------------------
-  -- SUPERMAVEN — inline ghost-text AI completions (free, sub-100ms latency).
-  -- Tab acceptance is routed through blink.cmp's <Tab> (see the blink spec below)
-  -- so supermaven and the completion menu never fight over the key. The old
-  -- collision was that BOTH plugins bound <Tab> in insert mode (last-loaded won,
-  -- nondeterministically). supermaven's own keymaps are disabled here; we keep
-  -- <C-j> (accept word) and <C-]> (dismiss).
+  -- SUPERMAVEN — inline ghost-text AI completions (currently disabled).
+  -- Kept as a disabled stub so it can be toggled back on without re-adding the
+  -- spec. When enabled, route Tab acceptance through blink.cmp to avoid a keymap
+  -- collision with the completion menu.
   -- ---------------------------------------------------------------------------
   {
     "supermaven-inc/supermaven-nvim",
@@ -38,27 +36,18 @@ return {
   },
 
   -- ---------------------------------------------------------------------------
-  -- BLINK.CMP — smart <Tab>: accept a Supermaven ghost suggestion if one is
-  -- showing, else jump a snippet field, else fall through. This is the SINGLE
-  -- owner of <Tab> in insert mode (resolves the supermaven/blink collision).
+  -- BLINK.CMP — <Tab> jumps the next snippet field or falls through.
+  -- If Supermaven is re-enabled above, prepend a function here that calls
+  -- preview.has_suggestion() / preview.on_accept_suggestion() so Tab accepts
+  -- ghost text before falling through to snippet navigation.
   -- Menu items are still accepted with <CR> (LazyVim's "enter" preset) and
-  -- navigated with <C-n>/<C-p>, so Tab stays a pure "accept AI / next field" key.
+  -- navigated with <C-n>/<C-p>.
   -- ---------------------------------------------------------------------------
   {
     "saghen/blink.cmp",
     opts = {
       keymap = {
-        ["<Tab>"] = {
-          function()
-            local ok, preview = pcall(require, "supermaven-nvim.completion_preview")
-            if ok and preview.has_suggestion() then
-              preview.on_accept_suggestion()
-              return true
-            end
-          end,
-          "snippet_forward",
-          "fallback",
-        },
+        ["<Tab>"] = { "snippet_forward", "fallback" },
         ["<S-Tab>"] = { "snippet_backward", "fallback" },
       },
     },
@@ -105,8 +94,8 @@ return {
   --   <leader>at  toggle→ show/hide sidebar without losing context
   --
   -- Model picker (Cursor-style — switch the active model mid-session):
-  --   <leader>ac  use Sonnet 4.6 (fast default)
-  --   <leader>ao  use Opus 4.8   (hard reasoning / large refactors)
+  --   <leader>ac  use Sonnet 4.5 (fast default)
+  --   <leader>ao  use Opus 4     (hard reasoning / large refactors)
   --
   -- Context (Cursor-style @ mentions, powered by fzf-lua):
   --   @           add a file to context (in sidebar input)
@@ -163,7 +152,8 @@ return {
       providers = {
         claude = {
           endpoint = "https://api.anthropic.com",
-          model = "claude-sonnet-4-6",      -- fast everyday default
+          api_key_name = "ANTHROPIC_API_KEY",
+          model = "claude-sonnet-4-5-20250929", -- fast everyday default
           timeout = 30000,
           extra_request_body = {
             temperature = 0,
@@ -174,7 +164,7 @@ return {
         -- Inherits endpoint + API key from `claude`; only the model changes.
         opus = {
           __inherited_from = "claude",
-          model = "claude-opus-4-8",
+          model = "claude-opus-4-20250514",
           extra_request_body = {
             temperature = 0,
             max_tokens = 32000,
@@ -196,6 +186,7 @@ return {
         support_paste_from_clipboard = true,
         minimize_diff = true,
         enable_token_counting = true,               -- show token usage per request
+        use_cwd_as_project_root = true,             -- anchor agent context to repo root
       },
 
       mappings = {
@@ -207,8 +198,6 @@ return {
         toggle = {
           default = "<leader>at",
           debug = "<leader>aD",
-          hint = "<leader>ah",
-          suggestion = "<leader>aS",
           repomap = "<leader>aM",
         },
 
@@ -316,9 +305,12 @@ return {
       "ClaudeCodeDiffAccept", "ClaudeCodeDiffDeny", "ClaudeCodeCloseAllDiffs",
     },
     opts = {
-      -- track_selection (default on): Claude always sees your current visual
-      -- selection / cursor position, Cursor-style. Defaults are sensible; the
-      -- empty table just triggers require("claudecode").setup().
+      -- Pin Claude's working directory to the git repo root so multi-file edits
+      -- and tool calls are anchored consistently.
+      git_repo_cwd = true,
+      -- Focus the Claude terminal after sending context so the conversation
+      -- flows without an extra <leader>kf.
+      focus_after_send = true,
     },
     keys = {
       { "<leader>k", nil, desc = "Claude Code" },

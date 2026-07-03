@@ -7,7 +7,7 @@ return {
   -- OIL.NVIM — file browser that edits the filesystem like a buffer
   -- WHY oil over NerdTree/neo-tree: oil is modal, fast, and you edit files
   -- the same way you edit text. Rename files with 'cw'. Delete with 'dd'.
-  -- Works great in tmux pane splits.
+  -- Works great in tmux or zellij pane splits.
   -- ---------------------------------------------------------------------------
   {
     "stevearc/oil.nvim",
@@ -67,6 +67,18 @@ return {
         ["gx"] = "actions.open_external",
         ["g."] = "actions.toggle_hidden",
         ["g\\"] = "actions.toggle_trash",
+        ["gy"] = {
+          desc = "Yank relative path",
+          callback = function()
+            require("oil.actions").yank_entry.callback({ modify = ":." })
+          end,
+        },
+        ["gY"] = {
+          desc = "Yank absolute path",
+          callback = function()
+            require("oil.actions").yank_entry.callback()
+          end,
+        },
       },
     },
   },
@@ -93,6 +105,11 @@ return {
       { "<leader>fs", "<cmd>FzfLua lsp_document_symbols<cr>", desc = "Document symbols" },
       { "<leader>fS", "<cmd>FzfLua lsp_workspace_symbols<cr>", desc = "Workspace symbols" },
       { "<leader>fc", "<cmd>FzfLua commands<cr>", desc = "Commands" },
+      { "<leader>fw", "<cmd>FzfLua grep_cword<cr>", desc = "Grep word under cursor" },
+      { "<leader>fW", "<cmd>FzfLua grep_visual<cr>", mode = "v", desc = "Grep visual selection" },
+      { "<leader>f;", "<cmd>FzfLua resume<cr>", desc = "Resume last picker" },
+      { "<leader>fl", "<cmd>FzfLua blines<cr>", desc = "Fuzzy lines in buffer" },
+      { "<leader>fq", "<cmd>FzfLua quickfix<cr>", desc = "Fuzzy quickfix" },
       { "<leader>gc", "<cmd>FzfLua git_commits<cr>", desc = "Git commits" },
       { "<leader>gb", "<cmd>FzfLua git_branches<cr>", desc = "Git branches" },
       { "<leader>gs", "<cmd>FzfLua git_status<cr>", desc = "Git status" },
@@ -126,10 +143,34 @@ return {
         ["--border"] = "none",
       },
       files = {
-        fd_opts = "--type f --hidden --follow --exclude .git --exclude node_modules --exclude .next --exclude dist",
+        fd_opts = "--type f --hidden --follow "
+          .. "--exclude .git "
+          .. "--exclude node_modules "
+          .. "--exclude .next "
+          .. "--exclude dist "
+          .. "--exclude build "
+          .. "--exclude target "
+          .. "--exclude .venv --exclude venv "
+          .. "--exclude __pycache__ "
+          .. "--exclude .turbo --exclude .parcel-cache --exclude .cache "
+          .. "--exclude coverage "
+          .. "--exclude .nuxt --exclude .output "
+          .. "--exclude '*.lock'",
       },
       grep = {
-        rg_opts = "--hidden --follow --smart-case --glob '!.git' --glob '!node_modules' --glob '!.next' --glob '!dist'",
+        rg_opts = "--hidden --follow --smart-case "
+          .. "--glob '!.git' "
+          .. "--glob '!node_modules' "
+          .. "--glob '!.next' "
+          .. "--glob '!dist' "
+          .. "--glob '!build' "
+          .. "--glob '!target' "
+          .. "--glob '!.venv' --glob '!venv' "
+          .. "--glob '!__pycache__' "
+          .. "--glob '!.turbo' --glob '!.parcel-cache' --glob '!.cache' "
+          .. "--glob '!coverage' "
+          .. "--glob '!.nuxt' --glob '!.output' "
+          .. "--glob '!*.lock'",
       },
     },
   },

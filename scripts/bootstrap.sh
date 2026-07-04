@@ -508,6 +508,15 @@ done
 # Starship reads ~/.config/starship.toml
 ln -sf "$DOTFILES_DIR/config/starship/starship.toml" ~/.config/starship.toml
 
+# Link user-facing operational scripts into ~/.local/bin so they are on PATH.
+for op_script in dotfiles-doctor.sh dotfiles-info.sh newproj.sh; do
+  src="$DOTFILES_DIR/scripts/$op_script"
+  name="${op_script%.sh}"   # strip .sh for the bin name
+  [[ -f "$src" ]] || continue
+  ln -sf "$src" "$HOME/.local/bin/$name"
+  success "Linked $name -> repo"
+done
+
 if [[ "$MODE" == "wsl" ]]; then
   # WSL FIX: node/npx are nvm lazy shell-functions, absent from the non-interactive
   # PATH that Claude Code / mcp-hub spawn with — so they fall back to the WINDOWS

@@ -1,11 +1,21 @@
 # AI-Native Developer Environment
 
+![Platform](https://img.shields.io/badge/Platform-Ubuntu%2022.04+%7C%20Fedora%2040+-blue?style=flat-square)
+![Shell](https://img.shields.io/badge/Shell-bash%20%7C%20zsh-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
 A portable Neovim + tmux + WezTerm command center for large-scale TypeScript/Node.js
 development with AI coding agents (Claude Code, avante.nvim) and a unified MCP toolset.
 
 Runs on **WSL2**, **native Linux desktops**, **headless Linux VPS** (over SSH), and
 **macOS** (with minor differences, all noted below). The repo is the single source of
 truth: configs are **symlinked** into `~/.config`, so editing the repo edits your live setup.
+
+**One-liner for a fresh VPS:**
+
+```bash
+bash <(curl -sS https://raw.githubusercontent.com/dporkka/dotfiles/main/scripts/setup-workstation.sh) --yes --mode server --shell bash
+```
 
 ---
 
@@ -17,9 +27,10 @@ truth: configs are **symlinked** into `~/.config`, so editing the repo edits you
 | **AI in editor** | **avante.nvim** (Cursor-style, `<leader>a`) · **claudecode.nvim** (`<leader>k`) · **supermaven** ghost-text · **mcphub.nvim** (MCP tools for avante) |
 | **AI in terminal** | Claude Code CLI · git-worktree + tmux agent isolation · `agent-session.sh` (pings you when an agent finishes) |
 | **MCP** | One blueprint (`config/mcp/servers.json`) → both Claude Code *and* avante. 6 core local servers: filesystem, memory, sequential-thinking, fetch, git, time |
-| **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
+| **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator); tmux-resurrect + tmux-continuum |
 | **Terminal** | WezTerm (local client) + EternalTerminal or Mosh for persistent remote sessions |
-| **Shell** | zsh + starship; secrets kept out of the repo |
+| **Shell** | bash or zsh + starship; modular `~/.bashrc.d/` fragments; secrets kept out of the repo |
+| **Ops** | `setup-workstation.sh`, `preflight.sh`, `dotfiles-doctor`, `dotfiles-info`, `newproj` |
 
 ---
 
@@ -40,6 +51,25 @@ The bootstrap installs most of these on Debian/Ubuntu. On other distros / macOS,
 ---
 
 ## Install
+
+### Quick start (fresh machine or VPS)
+
+```bash
+bash <(curl -sS https://raw.githubusercontent.com/dporkka/dotfiles/main/scripts/setup-workstation.sh) --yes --mode server --shell bash
+```
+
+This runs the full bundle: preflight checks, repo cloning, package installation,
+config symlinking, WezTerm setup, ET/Mosh server installation, and tmux
+persistence services. The installer is **checkpointed** — re-run the same command
+to resume from the last completed phase if it fails or is interrupted.
+
+Options:
+- `--mode desktop|server` — desktop applies GNOME keyboard tweaks; server sets up ET/Mosh
+- `--shell bash|zsh` — default login shell
+- `--with-runtimes` — also install Node/Go/Python/Rust + LSPs (requires `--shell zsh`)
+- `--with-hardening` — add swap, kernel tuning, SSH hardening, and fail2ban (server only)
+
+### Manual install
 
 ```bash
 # 1. Clone to ~/dotfiles (the path is assumed by the configs & scripts)
@@ -69,6 +99,23 @@ bash ~/dotfiles/scripts/link-config.sh
 > **The symlink model:** `~/.config/{nvim,tmux}`, `~/.zshrc` / `~/.bashrc`, and `~/.config/starship.toml`
 > are symlinks into this repo. Edit the repo, changes are live immediately — no copy/sync step.
 > Live config follows the repo's **checked-out branch**, so keep `main` checked out for daily use.
+
+---
+
+## Why a VPS for agentic coding?
+
+AI agents consume significant RAM and CPU. Running many agents locally drains
+your battery, competes with your desktop environment, and often exceeds laptop
+memory. A dedicated VPS gives you:
+
+- **24/7 compute** — agents keep working while your laptop is closed or offline.
+- **Predictable cost** — a 64 GB Contabo/OVH VPS costs ~$40–56/month flat; equivalent cloud resources cost 3–5× more.
+- **Isolation** — experimental agent work stays on the server, not your primary machine.
+- **Better connectivity** — wired datacenter networking beats home Wi-Fi for cloning, building, and pushing.
+
+This repo is optimized for that workflow: install once on the VPS, connect from
+your local WezTerm over ET or Mosh, and let tmux + systemd keep sessions alive
+across disconnects and reboots.
 
 ---
 
@@ -424,9 +471,16 @@ The systemd timer runs once per day with a 30-minute randomized delay:
 # Edit a config — it's a symlink, so changes are live immediately. Then:
 sync-dotfiles.sh "msg"      # commit + push the repo
 
+# Health and status
+dotfiles-doctor             # verify symlinks, binaries, plugins, systemd units
+dotfiles-info               # quick cached overview of sessions and agent state
+
 # Update plugins / tools
 nvim --headless "+Lazy! update" +qa
 bash ~/dotfiles/scripts/mcp-sync.sh        # after editing the MCP blueprint
+
+# Project scaffolding
+newproj myapp --stack node --tmuxp --claude
 
 # Health
 nvim --startuptime /tmp/nvim.log && tail -3 /tmp/nvim.log   # target <100ms

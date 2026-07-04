@@ -132,6 +132,17 @@ for file in "$DOTS"/home/.gitconfig "$DOTS"/home/.gitignore_global; do
 done
 
 # ------------------------------------------------------------------------------
+# Operational scripts on PATH.
+# ------------------------------------------------------------------------------
+mkdir -p "$HOME/.local/bin"
+for op_script in dotfiles-doctor.sh dotfiles-info.sh newproj.sh; do
+  src="$DOTS/scripts/$op_script"
+  name="${op_script%.sh}"
+  [[ -f "$src" ]] || continue
+  backup_then_link "$src" "$HOME/.local/bin/$name"
+done
+
+# ------------------------------------------------------------------------------
 # User systemd units for tmux background services (AI agent persistence).
 # Link only the specific units rather than the whole systemd directory so other
 # user units (e.g. from home-manager) are not shadowed.

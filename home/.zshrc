@@ -313,6 +313,12 @@ alias backup-logs='tail -f ~/.local/state/rclone/backup.log'
 alias backup-status='systemctl --user status backup-home-gdrive.service'
 alias backup-timer='systemctl --user list-timers backup-home-gdrive.timer'
 
+# Agent launchers (only defined when the corresponding binary exists)
+command -v claude &>/dev/null && cc() { command claude "$@"; }
+command -v codex &>/dev/null && cod() { command codex "$@"; }
+command -v aider &>/dev/null && aider() { command aider "$@"; }
+command -v antigravity &>/dev/null && agy() { command antigravity "$@"; }
+
 # ---------------------------------------------------------------------------
 # FUNCTIONS
 # ---------------------------------------------------------------------------

@@ -181,6 +181,7 @@ fi
 if [[ "$MODE" == "server" ]]; then
   log "Setting up EternalTerminal server..."
   bash "$HOME/dotfiles/scripts/setup-et-server.sh" || warn "ET server setup failed"
+  log "Mosh server setup is available at ~/dotfiles/scripts/setup-mosh-server.sh"
 fi
 
 # ------------------------------------------------------------------------------

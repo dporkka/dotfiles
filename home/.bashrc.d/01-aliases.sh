@@ -40,3 +40,9 @@ alias k='kubectl'
 
 # EternalTerminal + Tmux helpers
 alias etmux='et -c "tmux new-session -A -s main"'
+
+# Mosh + Tmux helper (UDP roaming; pass host as first argument)
+moshmux() {
+    local host="${1:?usage: moshmux <host>}"
+    mosh "$host" -- tmux new-session -A -s main
+}

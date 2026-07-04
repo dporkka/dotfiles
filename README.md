@@ -18,7 +18,7 @@ truth: configs are **symlinked** into `~/.config`, so editing the repo edits you
 | **AI in terminal** | Claude Code CLI · git-worktree + tmux agent isolation · `agent-session.sh` (pings you when an agent finishes) |
 | **MCP** | One blueprint (`config/mcp/servers.json`) → both Claude Code *and* avante. 6 core local servers: filesystem, memory, sequential-thinking, fetch, git, time |
 | **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
-| **Terminal** | WezTerm (local client) + EternalTerminal for persistent remote sessions |
+| **Terminal** | WezTerm (local client) + EternalTerminal or Mosh for persistent remote sessions |
 | **Shell** | zsh + starship; secrets kept out of the repo |
 
 ---
@@ -167,7 +167,7 @@ cd ~/bifrost && nix develop        # Bifrost dev shell
 ## Documentation
 
 - **[Workstation Setup Bundle](docs/workstation-setup.md)** — one-shot installer for the full local/VPS environment.
-- **[EternalTerminal + Tmux Setup](docs/et-setup.md)** — persistent remote sessions over ET with WezTerm, Tmux resurrection, and clipboard sync.
+- **[EternalTerminal + Mosh + Tmux Setup](docs/et-setup.md)** — persistent remote sessions over ET or Mosh with WezTerm, Tmux resurrection, and clipboard sync.
 
 ---
 
@@ -361,17 +361,20 @@ for metadata-heavy work:
   into `~/.local/bin` (ahead of Windows node on PATH) to fix this. Re-run after a node version
   change: `for b in node npx npm mcp-hub; do ln -sf "$(ls -d ~/.nvm/versions/node/*/bin|tail -1)/$b" ~/.local/bin/$b; done`
 
-### Headless Linux VPS (over EternalTerminal)
+### Headless Linux VPS (over ET or Mosh)
 
-- **Skip** all WSL steps; on a headless server you connect with WezTerm + ET, then run
-  Tmux on the server.
+- **Skip** all WSL steps; on a headless server you connect with WezTerm + ET or Mosh, then
+  run Tmux on the server.
 - Install Node (nvm or `apt`/`dnf`), `uv` (for uvx MCP servers), ripgrep, fd, fzf, jq, Claude Code.
   System node is on PATH already, so the MCP blueprint works as-is.
-- **Set up ET on the server:** `scp ~/dotfiles/scripts/setup-et-server.sh server:/tmp/ && ssh server 'bash /tmp/setup-et-server.sh'`.
-- **Clipboard over ET:** rely on **OSC52** — tmux has `set -g set-clipboard on`; use a terminal
+- **Set up the network layer on the server:**
+  - ET: `scp ~/dotfiles/scripts/setup-et-server.sh server:/tmp/ && ssh server 'bash /tmp/setup-et-server.sh'`
+  - Mosh: `scp ~/dotfiles/scripts/setup-mosh-server.sh server:/tmp/ && ssh server 'bash /tmp/setup-mosh-server.sh'`
+- **Clipboard:** rely on **OSC52** — tmux has `set -g set-clipboard on`; use a terminal
   that supports OSC52 (WezTerm does) so yanks reach your local clipboard.
-- **Persistent sessions:** `et server -c "tmux new-session -A -s main"` or use the WezTerm
-  `LEADER + e` / `LEADER + E` launchers.
+- **Persistent sessions:**
+  - ET: `et server -c "tmux new-session -A -s main"` or `LEADER + e` / `LEADER + E`
+  - Mosh: `mosh server -- tmux new-session -A -s main` or `LEADER + m` / `LEADER + M`
 - Desktop notifications degrade gracefully: `notify.sh` falls back to the terminal bell when no
   GUI / `notify-send` is present.
 

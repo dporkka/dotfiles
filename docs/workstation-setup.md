@@ -84,11 +84,17 @@ From WezTerm:
 
 - `LEADER + e` — pick a predefined ET host and open ET + Tmux in a new tab.
 - `LEADER + E` — prompt for a custom ET host.
+- `LEADER + m` — pick a predefined Mosh host and open Mosh + Tmux in a new tab.
+- `LEADER + M` — prompt for a custom Mosh host.
 
 Or manually:
 
 ```bash
+# EternalTerminal (TCP)
 et user@host -c "tmux new-session -A -s main"
+
+# Mosh (UDP roaming)
+mosh user@host -- tmux new-session -A -s main
 ```
 
-See also: [EternalTerminal + Tmux Setup](et-setup.md).
+See also: [EternalTerminal + Mosh + Tmux Setup](et-setup.md).

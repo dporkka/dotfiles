@@ -4,12 +4,25 @@
 # Run: bash bootstrap.sh
 # Safe to re-run: idempotent where possible
 # Override mode: MODE=server bash bootstrap.sh
+# Override shell: SHELL_CHOICE=bash bash bootstrap.sh
 # =============================================================================
 
 set -euo pipefail
 
 DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOG_FILE="/tmp/bootstrap-$(date +%Y%m%d-%H%M%S).log"
+
+# ---------------------------------------------------------------------------
+# ARGUMENT / ENV PARSING
+# ---------------------------------------------------------------------------
+SHELL_CHOICE="${SHELL_CHOICE:-}"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --shell=*) SHELL_CHOICE="${1#--shell=}"; shift ;;
+    --shell)   SHELL_CHOICE="${2:-}"; shift 2 ;;
+    *) echo "Unknown bootstrap arg: $1" >&2; shift ;;
+  esac
+done
 
 log() { echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG_FILE"; }
 success() { echo "✓ $*" | tee -a "$LOG_FILE"; }
@@ -37,6 +50,27 @@ if [[ -z "${MODE:-}" ]]; then
     MODE="server"
   fi
 fi
+
+# Shell choice: bash | zsh (default interactive prompt, or --shell / $SHELL_CHOICE)
+if [[ -z "$SHELL_CHOICE" ]]; then
+  if [[ -t 0 ]]; then
+    echo ""
+    echo "Which shell should be the default/login shell?"
+    PS3="Select shell: "
+    select opt in bash zsh; do
+      case "$opt" in
+        bash|zsh) SHELL_CHOICE="$opt"; break ;;
+        *) echo "Invalid choice. Please enter 1 (bash) or 2 (zsh)." ;;
+      esac
+    done
+  else
+    SHELL_CHOICE="zsh"
+  fi
+fi
+case "$SHELL_CHOICE" in
+  bash|zsh) log "Shell choice: $SHELL_CHOICE" ;;
+  *) error "Unsupported shell '$SHELL_CHOICE'. Use bash or zsh."; exit 1 ;;
+esac
 
 # Package manager
 if command -v apt-get &>/dev/null; then
@@ -110,6 +144,25 @@ elif [[ "$DISTRO" == "fedora" ]]; then
 fi
 
 success "System packages installed"
+
+# ---------------------------------------------------------------------------
+# 1b. ETERNALTERMINAL (et) — local client
+# ---------------------------------------------------------------------------
+
+log "Installing EternalTerminal (et)..."
+if command -v et &>/dev/null; then
+  success "et already installed: $(et --version 2>/dev/null | head -1)"
+else
+  if [[ "$DISTRO" == "fedora" ]]; then
+    sudo dnf install -y et && success "et installed" || warn "et install failed"
+  elif [[ "$DISTRO" == "debian" ]]; then
+    sudo add-apt-repository -y ppa:jgmath2000/et
+    sudo apt-get update -qq
+    sudo apt-get install -y et && success "et installed" || warn "et install failed"
+  else
+    warn "et auto-install not supported on $DISTRO — install manually: https://eternalterminal.dev"
+  fi
+fi
 
 # ---------------------------------------------------------------------------
 # 2. NEOVIM — install latest stable from GitHub
@@ -417,16 +470,40 @@ for dir in $LINK_CONFIGS; do
   fi
 done
 
-# Link home files as symlinks (with backup of any real file). Skip editor swaps.
-for file in home/.*; do
+# Link shell config based on user choice.
+if [[ "$SHELL_CHOICE" == "bash" ]]; then
+  for target in .bashrc .bash_profile; do
+    if [[ -e "$HOME/$target" && ! -L "$HOME/$target" ]]; then
+      mv "$HOME/$target" "$HOME/${target}.bak.$(date +%Y%m%d-%H%M%S)"
+      warn "Backed up existing $target"
+    fi
+    ln -sfn "$DOTFILES_DIR/home/$target" "$HOME/$target"
+    success "Linked home/$target -> repo"
+  done
+  if [[ -e "$HOME/.bashrc.d" && ! -L "$HOME/.bashrc.d" ]]; then
+    mv "$HOME/.bashrc.d" "$HOME/.bashrc.d.bak.$(date +%Y%m%d-%H%M%S)"
+    warn "Backed up existing ~/.bashrc.d"
+  fi
+  ln -sfn "$DOTFILES_DIR/home/.bashrc.d" "$HOME/.bashrc.d"
+  success "Linked home/.bashrc.d -> repo"
+elif [[ "$SHELL_CHOICE" == "zsh" ]]; then
+  if [[ -e "$HOME/.zshrc" && ! -L "$HOME/.zshrc" ]]; then
+    mv "$HOME/.zshrc" "$HOME/.zshrc.bak.$(date +%Y%m%d-%H%M%S)"
+    warn "Backed up existing ~/.zshrc"
+  fi
+  ln -sfn "$DOTFILES_DIR/home/.zshrc" "$HOME/.zshrc"
+  success "Linked home/.zshrc -> repo"
+fi
+
+# Other home files (git config, ignore rules)
+for file in "$DOTFILES_DIR"/home/.gitconfig "$DOTFILES_DIR"/home/.gitignore_global; do
   [[ -f "$file" ]] || continue
   basename=$(basename "$file")
-  case "$basename" in *.swp|*.swo) continue ;; esac
   if [[ -e "$HOME/$basename" && ! -L "$HOME/$basename" ]]; then
     cp "$HOME/$basename" "$HOME/${basename}.backup.$(date +%Y%m%d)"
     warn "Backed up existing $basename"
   fi
-  ln -sf "$DOTFILES_DIR/$file" "$HOME/$basename"
+  ln -sf "$file" "$HOME/$basename"
 done
 
 # Starship reads ~/.config/starship.toml
@@ -473,7 +550,38 @@ if [[ -f "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 15c. NEOVIM PLUGINS — deterministic install from lazy-lock.json
+# 15c. USER SYSTEMD SERVICES — tmux + Zellij persistence
+# ---------------------------------------------------------------------------
+
+log "Linking user systemd units..."
+mkdir -p "$HOME/.config/systemd/user"
+for unit in zellij.service tmux.service tmux-snapshot.service tmux-snapshot.timer; do
+  src="$DOTFILES_DIR/config/systemd/user/$unit"
+  dst="$HOME/.config/systemd/user/$unit"
+  if [[ -f "$src" ]]; then
+    if [[ -e "$dst" && ! -L "$dst" ]]; then
+      mv "$dst" "$dst.bak.$(date +%Y%m%d-%H%M%S)"
+      warn "Backed up existing $dst"
+    fi
+    ln -sfn "$src" "$dst"
+    success "Linked systemd unit: $unit"
+  fi
+done
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  log "Enabling tmux + Zellij persistence services..."
+  systemctl --user enable zellij.service tmux.service tmux-snapshot.timer >/dev/null 2>&1 \
+    && success "Persistence services enabled" \
+    || warn "Could not enable persistence services — enable manually with: systemctl --user enable tmux.service zellij.service tmux-snapshot.timer"
+  log "Starting tmux + Zellij persistence services..."
+  systemctl --user start tmux.service zellij.service tmux-snapshot.timer >/dev/null 2>&1 \
+    && success "Persistence services started" \
+    || warn "Could not start persistence services — start manually with: systemctl --user start tmux.service zellij.service tmux-snapshot.timer"
+fi
+
+# ---------------------------------------------------------------------------
+# 15d. NEOVIM PLUGINS — deterministic install from lazy-lock.json
 # Lazy auto-installs the *latest* commits on first launch; `restore` pins every
 # plugin to the versions committed in lazy-lock.json for reproducible installs.
 # ---------------------------------------------------------------------------
@@ -486,13 +594,14 @@ if command -v nvim &>/dev/null && [[ -f "$HOME/.config/nvim/lazy-lock.json" ]]; 
 fi
 
 # ---------------------------------------------------------------------------
-# 16. CHANGE DEFAULT SHELL TO ZSH
+# 16. CHANGE DEFAULT SHELL
 # ---------------------------------------------------------------------------
 
-if [[ "$SHELL" != "$(which zsh)" ]]; then
-  log "Setting zsh as default shell..."
-  chsh -s "$(which zsh)"
-  success "Shell changed to zsh (restart shell to take effect)"
+TARGET_SHELL="$(which "$SHELL_CHOICE")"
+if [[ "$SHELL" != "$TARGET_SHELL" ]]; then
+  log "Setting $SHELL_CHOICE as default shell..."
+  chsh -s "$TARGET_SHELL"
+  success "Shell changed to $SHELL_CHOICE (restart shell to take effect)"
 fi
 
 # ---------------------------------------------------------------------------
@@ -525,12 +634,12 @@ echo "Next steps:"
 if [[ "$MODE" == "wsl" ]]; then
   echo "1. Copy wsl/.wslconfig to C:\\Users\\<YourUser>\\.wslconfig"
   echo "2. Restart WSL: wsl --shutdown (from PowerShell)"
-  echo "3. Open a new terminal — zsh will be your shell"
+  echo "3. Open a new terminal — $SHELL_CHOICE will be your shell"
   echo "4. Start nvim — plugins pinned to lazy-lock.json"
   echo "5. Run: gh auth login"
   echo "6. Add API keys to ~/.config/zsh/secrets.zsh"
 else
-  echo "1. exec zsh  (or log out and back in for default shell)"
+  echo "1. exec $SHELL_CHOICE  (or log out and back in for default shell)"
   echo "2. Start nvim — plugins pinned to lazy-lock.json"
   echo "3. Run: gh auth login"
   echo "4. Add API keys to ~/.config/zsh/secrets.zsh"

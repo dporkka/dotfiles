@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # =============================================================================
-# agent-registry.sh — lightweight file-based registry for AI agents.
+# agent-registry.sh — lightweight file-based registry for tmux agents.
 #
-# Unifies tmux and Zellij agents so dashboards/status lines can see all agents
-# in one place. Records survive multiplexer detach/restart because they live on
-# disk under ~/.local/state/agents/registry/.
+# Unifies tmux agents so dashboards/status lines can see all agents in one
+# place. Records survive tmux detach/restart because they live on disk under
+# ~/.local/state/agents/registry/.
 #
 # Usage:
-#   agent-registry.sh register <session> <multiplexer> [key=value ...]
+#   agent-registry.sh register <session> tmux [key=value ...]
 #   agent-registry.sh set-state <session> <state>
 #   agent-registry.sh set <session> <key> <value>
 #   agent-registry.sh get <session> [key]
@@ -42,8 +42,8 @@ cmd_register() {
   local multiplexer="${2:?Usage: register <session> <multiplexer> [key=value ...]}"
   shift 2
 
-  [[ "$multiplexer" == "tmux" || "$multiplexer" == "zellij" ]] \
-    || { echo "agent-registry: multiplexer must be tmux or zellij" >&2; exit 2; }
+  [[ "$multiplexer" == "tmux" ]] \
+    || { echo "agent-registry: multiplexer must be tmux" >&2; exit 2; }
 
   local file
   file="$(record_path "$session")"
@@ -110,21 +110,10 @@ cmd_get() {
   fi
 }
 
-# Check whether a session is still alive in its multiplexer.
+# Check whether a tmux session is still alive.
 session_alive() {
-  local multiplexer="$1"
   local session="$2"
-  case "$multiplexer" in
-    tmux)
-      tmux has-session -t "$session" 2>/dev/null
-      ;;
-    zellij)
-      zellij list-sessions --no-formatting 2>/dev/null | awk '{print $1}' | grep -qxF "$session"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  tmux has-session -t "$session" 2>/dev/null
 }
 
 cmd_list() {
@@ -168,7 +157,7 @@ cmd_clear() {
 # Snapshot the entire registry to a single timestamped JSON file. Snapshots are
 # the resurrection source of truth: they survive registry clears/prunes and let
 # you bring back agent metadata (worktree, branch, base, cmd) even when the
-# original multiplexer session is gone.
+# original tmux session is gone.
 cmd_snapshot() {
   local name="${1:-$(snapshot_name)}"
   local file="$SNAPSHOT_DIR/${name}.json"
@@ -196,7 +185,7 @@ cmd_list_snapshots() {
 }
 
 # Restore registry records from a snapshot. Existing records are removed first;
-# records whose session is still alive in the original multiplexer are preserved.
+# records whose session is still alive in tmux are preserved.
 cmd_restore() {
   local name="${1:-latest}"
   local file=""
@@ -220,7 +209,7 @@ cmd_restore() {
 }
 
 # Resurrect dead agent sessions from the latest snapshot. For each record whose
-# session no longer exists in its multiplexer, re-launch it using the recorded
+# tmux session no longer exists, re-launch it using the recorded
 # worktree/branch/agent_cmd. Best-effort: missing git worktrees or unknown
 # agents are skipped with a message instead of failing.
 cmd_resurrect() {
@@ -237,6 +226,7 @@ cmd_resurrect() {
     session="$(jq -r '.session // empty' <<< "$rec" 2>/dev/null || true)"
     multiplexer="$(jq -r '.multiplexer // empty' <<< "$rec" 2>/dev/null || true)"
     [[ -n "$session" && -n "$multiplexer" ]] || continue
+    [[ "$multiplexer" == "tmux" ]] || continue
     session_alive "$multiplexer" "$session" && continue
 
     worktree="$(jq -r '.worktree // empty' <<< "$rec" 2>/dev/null || true)"
@@ -256,67 +246,35 @@ cmd_resurrect() {
     [[ -n "$agent" ]] || agent="claude"
 
     if $dry_run; then
-      echo "[dry-run] would resurrect $multiplexer session '$session' (agent: $agent)"
+      echo "[dry-run] would resurrect tmux session '$session' (agent: $agent)"
       continue
     fi
 
-    case "$multiplexer" in
-      tmux)
-        if [[ -n "$branch" && -n "$worktree" && -n "$base" ]]; then
-          # Worktree agent: recreate worktree + session.
-          if [[ -d "$worktree" ]]; then
-            echo "Resurrecting tmux worktree agent: $session"
-            if [[ -n "$prompt" ]]; then
-              "$HOME/dotfiles/scripts/agent-worktree.sh" "$branch" --base "$base" --agent "$agent" "$prompt"
-            else
-              "$HOME/dotfiles/scripts/agent-worktree.sh" "$branch" --base "$base" --agent "$agent"
-            fi
-            resurrected=$((resurrected + 1))
-          else
-            echo "Skipping $session: worktree missing ($worktree)"
-          fi
-        elif [[ -n "$worktree" ]]; then
-          # Session agent: recreate a plain tmux session.
-          if [[ -d "$worktree" ]]; then
-            echo "Resurrecting tmux session agent: $session"
-            (cd "$worktree" && "$HOME/dotfiles/scripts/agent-session.sh" "$session" "$agent"${prompt:+ }$prompt)
-            resurrected=$((resurrected + 1))
-          else
-            echo "Skipping $session: worktree missing ($worktree)"
-          fi
+    if [[ -n "$branch" && -n "$worktree" && -n "$base" ]]; then
+      # Worktree agent: recreate worktree + session.
+      if [[ -d "$worktree" ]]; then
+        echo "Resurrecting tmux worktree agent: $session"
+        if [[ -n "$prompt" ]]; then
+          "$HOME/dotfiles/scripts/agent-worktree.sh" "$branch" --base "$base" --agent "$agent" "$prompt"
         else
-          echo "Skipping $session: no worktree to resurrect"
+          "$HOME/dotfiles/scripts/agent-worktree.sh" "$branch" --base "$base" --agent "$agent"
         fi
-        ;;
-      zellij)
-        if [[ -n "$branch" && -n "$worktree" && -n "$base" ]]; then
-          if [[ -d "$worktree" ]]; then
-            echo "Resurrecting zellij worktree agent: $session"
-            if [[ -n "$prompt" ]]; then
-              "$HOME/dotfiles/scripts/zellij-agent-worktree.sh" "$branch" --base "$base" --agent "$agent" "$prompt"
-            else
-              "$HOME/dotfiles/scripts/zellij-agent-worktree.sh" "$branch" --base "$base" --agent "$agent"
-            fi
-            resurrected=$((resurrected + 1))
-          else
-            echo "Skipping $session: worktree missing ($worktree)"
-          fi
-        elif [[ -n "$worktree" ]]; then
-          if [[ -d "$worktree" ]]; then
-            echo "Resurrecting zellij session agent: $session"
-            (cd "$worktree" && "$HOME/dotfiles/scripts/zellij-agent-session.sh" "$session" "$agent"${prompt:+ }$prompt)
-            resurrected=$((resurrected + 1))
-          else
-            echo "Skipping $session: worktree missing ($worktree)"
-          fi
-        else
-          echo "Skipping $session: no worktree to resurrect"
-        fi
-        ;;
-      *)
-        echo "Skipping $session: unknown multiplexer '$multiplexer'"
-        ;;
-    esac
+        resurrected=$((resurrected + 1))
+      else
+        echo "Skipping $session: worktree missing ($worktree)"
+      fi
+    elif [[ -n "$worktree" ]]; then
+      # Session agent: recreate a plain tmux session.
+      if [[ -d "$worktree" ]]; then
+        echo "Resurrecting tmux session agent: $session"
+        (cd "$worktree" && "$HOME/dotfiles/scripts/agent-session.sh" "$session" "$agent"${prompt:+ }$prompt)
+        resurrected=$((resurrected + 1))
+      else
+        echo "Skipping $session: worktree missing ($worktree)"
+      fi
+    else
+      echo "Skipping $session: no worktree to resurrect"
+    fi
   done < <(jq -c '.[]' "$file" 2>/dev/null || true)
   echo "Resurrected $resurrected session(s)."
 }

@@ -110,9 +110,7 @@ map("t", "<Esc><Esc>", "<C-\\><C-n>", { desc = "Exit terminal mode" })
 local function term_nav(direction)
   return function()
     local cmd
-    if vim.env.ZELLIJ ~= nil then
-      cmd = "ZellijNavigate" .. direction:gsub("^%l", string.upper)
-    elseif vim.env.TMUX ~= nil then
+    if vim.env.TMUX ~= nil then
       cmd = "TmuxNavigate" .. direction:gsub("^%l", string.upper)
     else
       cmd = "wincmd " .. direction

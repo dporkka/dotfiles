@@ -67,7 +67,7 @@ if grep -qi microsoft /proc/version 2>/dev/null; then
   # wslview is part of wslu — install with: sudo apt install wslu
   # It opens URLs/files in the appropriate Windows application.
 
-  # GPU/GL rendering for GUI apps launched from WSL (e.g. Ghostty).
+  # GPU/GL rendering for GUI apps launched from WSL.
   # WSL exposes the GPU via /dev/dxg + Mesa's d3d12 driver — not /dev/dri — so
   # Mesa's default Zink/DRI probe fails noisily ("ZINK: failed to choose pdev",
   # "egl: failed to create dri2 screen") before falling back. Pinning the WSL
@@ -274,16 +274,6 @@ alias tls='tmux ls'
 alias tn='tmux new -s'
 alias tk='tmux kill-session -t'
 
-# zellij (coexists with tmux; use z-prefixed aliases)
-if command -v zellij &>/dev/null; then
-  alias za='zellij attach'
-  alias zl='zellij list-sessions'
-  alias zn='zellij --session'
-  alias zk='zellij delete-session'
-  alias zka='zellij delete-all-sessions'
-  alias zsd='zellij-service.sh'
-fi
-
 # Docker
 alias d='docker'
 alias dc='docker compose'
@@ -315,6 +305,13 @@ alias pbpaste='powershell.exe -command "Get-Clipboard"'
 
 # Lazygit
 alias lg='lazygit'
+
+# Backups (Google Drive via rclone)
+alias backup-now='~/dotfiles/scripts/backup-home-gdrive.sh'
+alias backup-dry='~/dotfiles/scripts/backup-home-gdrive.sh --dry-run'
+alias backup-logs='tail -f ~/.local/state/rclone/backup.log'
+alias backup-status='systemctl --user status backup-home-gdrive.service'
+alias backup-timer='systemctl --user list-timers backup-home-gdrive.timer'
 
 # ---------------------------------------------------------------------------
 # FUNCTIONS
@@ -352,36 +349,6 @@ agent() {
     tmux send-keys "claude --task '${task}'" Enter
   else
     tmux send-keys "claude" Enter
-  fi
-}
-
-# Start a new zellij session for a project (mirrors work() for tmux)
-zwork() {
-  if ! command -v zellij &>/dev/null; then
-    echo "zellij not found" >&2
-    return 1
-  fi
-  local session="${1:-$(basename "$PWD")}"
-  local cwd="${2:-$PWD}"
-  if zellij list-sessions 2>/dev/null | grep -q "^${session} "; then
-    zellij attach "$session"
-  else
-    cd "$cwd" && zellij --session "$session"
-  fi
-}
-
-# Quick Claude Code agent session in a new zellij tab
-zagent() {
-  if ! command -v zellij &>/dev/null; then
-    echo "zellij not found" >&2
-    return 1
-  fi
-  local task="${1:-}"
-  local tab_name="agent-$(date +%H%M%S)"
-  if [[ -n "$task" ]]; then
-    zellij run --name "$tab_name" -- claude --task "$task"
-  else
-    zellij run --name "$tab_name" -- claude
   fi
 }
 
@@ -453,7 +420,7 @@ command -v starship &>/dev/null && eval "$(starship init zsh)"
 # ---------------------------------------------------------------------------
 # AGENT REGISTRY SHELL HOOKS
 # Keep the unified agent registry in sync with the current shell context.
-# precmd updates worktree/branch for the active tmux/Zellij session.
+# precmd updates worktree/branch for the active tmux session.
 # chpwd offers to resurrect a dead agent session when you cd back into its
 # worktree (set AGENT_AUTO_RESURRECT=true to resurrect automatically).
 # ---------------------------------------------------------------------------

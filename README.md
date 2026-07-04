@@ -1,6 +1,6 @@
 # AI-Native Developer Environment
 
-A portable Neovim + tmux + Ghostty command center for large-scale TypeScript/Node.js
+A portable Neovim + tmux + WezTerm command center for large-scale TypeScript/Node.js
 development with AI coding agents (Claude Code, avante.nvim) and a unified MCP toolset.
 
 Runs on **WSL2**, **native Linux desktops**, **headless Linux VPS** (over SSH), and
@@ -17,8 +17,8 @@ truth: configs are **symlinked** into `~/.config`, so editing the repo edits you
 | **AI in editor** | **avante.nvim** (Cursor-style, `<leader>a`) · **claudecode.nvim** (`<leader>k`) · **supermaven** ghost-text · **mcphub.nvim** (MCP tools for avante) |
 | **AI in terminal** | Claude Code CLI · git-worktree + tmux agent isolation · `agent-session.sh` (pings you when an agent finishes) |
 | **MCP** | One blueprint (`config/mcp/servers.json`) → both Claude Code *and* avante. 6 core local servers: filesystem, memory, sequential-thinking, fetch, git, time |
-| **Multiplexer** | Zellij 0.44+ (primary) · tmux 3.x preserved for existing workflows — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
-| **Terminal** | Ghostty (local machine only) |
+| **Multiplexer** | tmux 3.x — seamless `C-hjkl` nav across nvim splits ↔ tmux panes (vim-tmux-navigator) |
+| **Terminal** | WezTerm (local client) + EternalTerminal for persistent remote sessions |
 | **Shell** | zsh + starship; secrets kept out of the repo |
 
 ---
@@ -66,7 +66,7 @@ Already have a clone and just want to (re)link configs without a full bootstrap:
 bash ~/dotfiles/scripts/link-config.sh
 ```
 
-> **The symlink model:** `~/.config/{nvim,tmux,ghostty}`, `~/.zshrc`, and `~/.config/starship.toml`
+> **The symlink model:** `~/.config/{nvim,tmux}`, `~/.zshrc` / `~/.bashrc`, and `~/.config/starship.toml`
 > are symlinks into this repo. Edit the repo, changes are live immediately — no copy/sync step.
 > Live config follows the repo's **checked-out branch**, so keep `main` checked out for daily use.
 
@@ -118,7 +118,7 @@ This repo is also a Nix flake. It uses [home-manager](https://github.com/nix-com
 
 ### What it manages
 
-- **home-manager** installs common packages: `git`, `just`, `tmux`, `tmuxp`, `zellij`, `fzf`, `zoxide`, `starship`, `eza`, `bat`, `ripgrep`, `fd`, `jq`, `yq-go`, `delta`, `lazygit`, `gh`, `direnv`, `nix-direnv`, `nixfmt`, `uv`, `nodejs`, `go`, `rustc`, `cargo`, `neovim`, `wget`, `curl`, `tree`, `htop`, `btop`, `unzip`, `zip`.
+- **home-manager** installs common packages: `git`, `just`, `tmux`, `tmuxp`, `fzf`, `zoxide`, `starship`, `eza`, `bat`, `ripgrep`, `fd`, `jq`, `yq-go`, `delta`, `lazygit`, `gh`, `direnv`, `nix-direnv`, `nixfmt`, `uv`, `nodejs`, `go`, `rustc`, `cargo`, `neovim`, `wget`, `curl`, `tree`, `htop`, `btop`, `unzip`, `zip`.
 - **Existing shell configs are preserved.** `~/.bashrc`, `~/.zshrc`, `~/.profile`, and `~/.bash_profile` are left untouched. `direnv` is installed but not auto-hooked, so add `eval "$(direnv hook zsh)"` (or `bash`) to your shell config if you want directory-local env loading.
 - **Dev shells** give you project-specific toolchains without polluting the global environment. Use them for the repos that don’t have their own flake (or as a quick fallback).
 
@@ -166,8 +166,8 @@ cd ~/bifrost && nix develop        # Bifrost dev shell
 
 ## Documentation
 
-- **[Zellij Setup Guide](docs/zellij.md)** — install, layouts, AI-agent workflows, key bindings, and migration tips from tmux.
-- **[Zellij Cheatsheet](docs/zellij-cheatsheet.md)** — one-page command/key/layout reference.
+- **[Workstation Setup Bundle](docs/workstation-setup.md)** — one-shot installer for the full local/VPS environment.
+- **[EternalTerminal + Tmux Setup](docs/et-setup.md)** — persistent remote sessions over ET with WezTerm, Tmux resurrection, and clipboard sync.
 
 ---
 
@@ -225,31 +225,31 @@ and `:MCPHub` → `R` in Neovim. Remote servers use `{"type":"http","url":...}`.
 | Key | Action |
 |---|---|
 | `C-a \|` / `C-a -` | Split vertical / horizontal |
+| `Alt-\` / `Alt--` | Quick split vertical / horizontal (no prefix) |
+| `Alt-n` | New pane (no prefix) · `Alt-f` floating scratch popup |
 | `C-h/j/k/l` | Navigate panes **and** nvim splits (no prefix, seamless) |
-| `C-a D / A / Q` | Dev / Agent (3-col) / Quad layout |
+| `C-a D / A / Q` | Dev / Agent (3-col) / Quad layout (now auto-runs lazygit/log panes) |
 | `C-a a` | **Agent dashboard** — fzf every agent across sessions + live preview; Enter jumps |
 | `C-a W` | **Spawn agent** in a new git worktree (prompts for branch) |
 | `C-a f` | Project finder (fzf over `~/dev`, etc.) |
-| `C-a g` | lazygit popup · `C-a t` shell popup |
+| `C-a F` | Fuzzy session/window manager with live pane preview |
+| `C-a g` | lazygit popup · `C-a C-t` scratch shell popup |
 | `C-a S` | Session switcher · `M-1..9` jump to window |
-| `C-a r` | Reload config · `prefix + I/U` TPM install/update |
-| `C-a R` | Reconcile tmux agent registry after a mass restore (resurrect/continuum) |
+| `C-a C-r` | Reload config · `C-a M-s/M-r` resurrect save/restore · `prefix + I/U` TPM install/update |
+| `C-a R` | Reconcile tmux agent registry after a mass restore |
+| `C-a C-R` | Full manual restore: resurrect tmux sessions + reconcile + resurrect dead agents |
+| `C-a C-c` | Copy last N lines of scrollback to `/tmp/tmux-last-lines.txt` |
+| `C-a C-s` | Send a command to all panes in the current window |
+| `C-a !` | Manually mark current window as waiting-on-agent |
 
-### Zellij (primary multiplexer)
+#### Mode menus (enter with `C-a p/t/r/o`, exit with `Esc/q/Enter`)
 
-| Key | Action |
-|---|---|
-| `Ctrl b` | Enter tmux-emulation mode (then `\|`, `-`, `c`, `hjkl`, etc.) |
-| `Alt h/j/k/l` | Move focus between panes/tabs |
-| `Alt n` | New pane · `Alt f` toggle floating panes |
-| `Ctrl t` / `Ctrl p` / `Ctrl n` / `Ctrl o` | Tab / pane / resize / session mode |
-| `Ctrl o` `w` | Session manager popup |
-| `Alt a` | **Agent session manager** popup |
-| `Alt Shift a` | **Spawn agent session** (prompts for name/agent) |
-| `Alt w` | **Spawn agent worktree** (prompts for branch/base/agent) |
-| `Alt d` | **Agent dashboard** — fzf over running Zellij agent sessions |
-| `zellij --layout agent --session <name>` | Spawn an AI agent session layout |
-| `zellij --layout dev` / `quad` | Dev or quad pane layout |
+| Mode | Key | Actions inside mode |
+|---|---|---|
+| **Pane** | `C-a p` | `h/j/k/l` move, `\|/-` split, `x` close, `z` zoom, `f` float |
+| **Tab/Window** | `C-a t` | `n` new, `c` rename, `x` kill, `h/l` prev/next, `1-9` jump, `,`/`.` move |
+| **Resize** | `C-a r` | `h/j/k/l` ±5, `H/J/K/L` ±10, `m` zoom |
+| **Session** | `C-a o` | `s` switch, `n` new, `f` finder, `d` detach, `x` kill, `$` rename |
 
 ### Neovim (leader = `Space`)
 
@@ -297,17 +297,11 @@ agent-worktree.sh feat/payments "add MFA to the login form"   # prompt is option
 # Just a worktree, no agent:   new-worktree.sh feat/x main
 # Dedicated agent session (editor/watch/review), pings on process exit:
 agent-session.sh refactor-auth claude
-
-# Zellij equivalents (coexist with tmux):
-zwork ~/dev/myproject                    # jump to / create a zellij session
-zellij-agent-session.sh refactor-auth claude
-zellij-agent-dashboard.sh                # fzf mission control for zellij agents
-zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
 ```
 
 **Mission control — which agent needs me?**
 
-- **`C-a a`** / **`Alt d`** → fzf dashboard of every agent window across *all* sessions, with a
+- **`C-a a`** → fzf dashboard of every agent window across *all* sessions, with a
   live pane preview; Enter jumps to it.
 - Status bar shows **`⚡N waiting / ✓N done`** across all sessions; window tabs get
   ⚡/✓ glyphs.
@@ -320,9 +314,20 @@ zellij-agent-worktree.sh feat/payments   # worktree + zellij session + agent
 
 **Persistence & resurrection**
 
-- The unified registry is snapshotted with `agent-registry.sh snapshot` and stored under
-  `~/.local/state/agents/snapshots/`. Restore with `agent-registry.sh restore latest` or
-  relaunch dead sessions with `agent-registry.sh resurrect --dry-run` / `resurrect`.
+- `tmux.service` starts on login and keeps the tmux server alive so sessions survive
+  terminal closure, sleep, and reboot.
+- `tmux-snapshot.timer` snapshots the agent registry every 2 minutes to
+  `~/.local/state/agents/snapshots/`.
+- `tmux-resurrect` + `tmux-continuum` save tmux sessions every 15 minutes and auto-restore
+  them when the tmux server starts.
+- After a restore, dead agent sessions are automatically resurrected from the latest
+  registry snapshot.
+- Manual controls:
+  - `C-a C-R` — full manual restore (resurrect tmux sessions + reconcile registry + resurrect dead agents)
+  - `C-a R` — reconcile registry after a mass restore
+  - `systemctl --user {start|stop|status} tmux.service`
+  - `agent-registry.sh snapshot` / `agent-registry.sh restore latest`
+  - `agent-resurrect.sh all --dry-run` / `agent-resurrect.sh all`
 - A shell hook (`scripts/agent-shell-hook.sh`) runs on every `precmd`/`chpwd` to keep
   registry worktree/branch metadata in sync. Set `AGENT_AUTO_RESURRECT=true` to
   automatically revive a dead agent session when you `cd` back into its worktree.
@@ -356,16 +361,17 @@ for metadata-heavy work:
   into `~/.local/bin` (ahead of Windows node on PATH) to fix this. Re-run after a node version
   change: `for b in node npx npm mcp-hub; do ln -sf "$(ls -d ~/.nvm/versions/node/*/bin|tail -1)/$b" ~/.local/bin/$b; done`
 
-### Headless Linux VPS (over SSH)
+### Headless Linux VPS (over EternalTerminal)
 
-- **Skip** all WSL steps and Ghostty (Ghostty is your *local* terminal; you SSH in with your
-  local terminal + tmux).
+- **Skip** all WSL steps; on a headless server you connect with WezTerm + ET, then run
+  Tmux on the server.
 - Install Node (nvm or `apt`/`dnf`), `uv` (for uvx MCP servers), ripgrep, fd, fzf, jq, Claude Code.
   System node is on PATH already, so the MCP blueprint works as-is.
-- **Clipboard over SSH:** rely on **OSC52** — tmux has `set -g set-clipboard on`; use a terminal
-  that supports OSC52 (most modern ones do) so yanks reach your local clipboard.
-- **Persistent sessions:** `ssh server -t "tmux new-session -A -s main"`. Add to `~/.ssh/config`:
-  `ControlMaster auto` + `ControlPersist 10m` for fast re-attach.
+- **Set up ET on the server:** `scp ~/dotfiles/scripts/setup-et-server.sh server:/tmp/ && ssh server 'bash /tmp/setup-et-server.sh'`.
+- **Clipboard over ET:** rely on **OSC52** — tmux has `set -g set-clipboard on`; use a terminal
+  that supports OSC52 (WezTerm does) so yanks reach your local clipboard.
+- **Persistent sessions:** `et server -c "tmux new-session -A -s main"` or use the WezTerm
+  `LEADER + e` / `LEADER + E` launchers.
 - Desktop notifications degrade gracefully: `notify.sh` falls back to the terminal bell when no
   GUI / `notify-send` is present.
 
@@ -373,7 +379,39 @@ for metadata-heavy work:
 
 - Install deps with Homebrew (`brew install neovim tmux ripgrep fd fzf jq uv`).
 - Clipboard works natively (`pbcopy`/`pbpaste`); the WSL `clip.exe` alias is harmless/unused.
-- Skip WSL and (optionally) Ghostty if you use another terminal. Everything else is identical.
+- Skip WSL-specific steps. Everything else is identical.
+
+---
+
+## Backups to Google Drive
+
+A daily rclone backup of `$HOME` is configured via systemd.
+
+```bash
+# One-time Google Drive OAuth setup
+rclone config
+#   name: gdrive
+#   storage: Google Drive
+#   scope: 1 (Full access)
+#   use auto config: y  (opens browser)
+
+# Dry-run to preview what would be uploaded
+backup-dry
+
+# Run a backup now
+backup-now
+
+# Check timer status
+backup-timer
+```
+
+Files excluded from the backup: caches (`~/.cache`, `node_modules`, etc.), build
+artifacts, secrets (SSH private keys, `secrets.zsh`, `.env*`), and files larger
+than 100 MiB. Overwritten or deleted files are moved to a timestamped
+`home-versions/` folder on Google Drive so you can recover older copies.
+
+The systemd timer runs once per day with a 30-minute randomized delay:
+`systemctl --user status backup-home-gdrive.timer`.
 
 ---
 

@@ -16,7 +16,6 @@
       just
       tmux
       tmuxp
-      zellij
 
       # Shell essentials
       fzf
@@ -55,6 +54,7 @@
       btop
       unzip
       zip
+      rclone
     ];
 
     # Session variables are intentionally omitted here so home-manager does

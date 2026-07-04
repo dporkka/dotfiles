@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# agent-shell-hook.sh — shell integration for the unified agent registry.
+# agent-shell-hook.sh — shell integration for the tmux agent registry.
 #
 # Designed to be called from zsh precmd/chpwd (and bash PROMPT_COMMAND if desired).
 # It keeps registry records in sync with the shell's actual context and can
-# resurrect a dead agent session when you cd back into its worktree.
+# resurrect a dead tmux agent session when you cd back into its worktree.
 #
 # Usage in ~/.zshrc:
 #   agent_precmd() { $HOME/dotfiles/scripts/agent-shell-hook.sh; }
@@ -28,15 +28,12 @@ SNAPSHOT_DIR="${AGENT_SNAPSHOT_DIR:-$HOME/.local/state/agents/snapshots}"
 [[ -x "$REGISTRY" ]] || exit 0
 command -v jq >/dev/null 2>&1 || exit 0
 
-# Determine current multiplexer session name, if any.
+# Determine current tmux session name, if any.
 multiplexer=""
 session_name=""
 if [[ -n "${TMUX:-}" ]]; then
   multiplexer="tmux"
   session_name="$(tmux display-message -p '#S' 2>/dev/null || true)"
-elif [[ -n "${ZELLIJ_SESSION_NAME:-}" ]]; then
-  multiplexer="zellij"
-  session_name="$ZELLIJ_SESSION_NAME"
 fi
 
 # Best-effort current git branch inside the worktree.
@@ -46,7 +43,7 @@ current_branch() {
   fi
 }
 
-# Update the registry record for the current multiplexer session.
+# Update the registry record for the current tmux session.
 update_session_record() {
   [[ -n "$session_name" && -n "$multiplexer" ]] || return 0
   [[ "${AGENT_NO_REGISTRY_UPDATE:-0}" != "1" ]] || return 0
@@ -69,7 +66,7 @@ update_session_record() {
   "$REGISTRY" set "$session_name" worktree "$worktree" >/dev/null 2>&1 || true
 }
 
-# If the current directory is a known agent worktree whose session is dead, offer
+# If the current directory is a known agent worktree whose tmux session is dead, offer
 # to resurrect it. Auto-resurrect only when AGENT_AUTO_RESURRECT=true.
 maybe_resurrect_worktree() {
   [[ -n "$PWD" ]] || return 0
@@ -104,46 +101,28 @@ maybe_resurrect_worktree() {
   fi
   [[ -n "$snap_agent" ]] || snap_agent="claude"
 
-  # Check whether the session is still alive.
+  # Only handle tmux sessions.
   case "$snap_mux" in
     tmux)
       tmux has-session -t "$snap_session" 2>/dev/null && return 0
-      ;;
-    zellij)
-      zellij list-sessions --no-formatting 2>/dev/null | awk '{print $1}' | grep -qxF "$snap_session" && return 0
       ;;
     *) return 0 ;;
   esac
 
   if [[ "${AGENT_AUTO_RESURRECT:-false}" == "true" ]]; then
-    echo "[agent] resurrecting $snap_mux session '$snap_session'..." >&2
-    case "$snap_mux" in
-      tmux)
-        if [[ -n "$snap_branch" && -n "$snap_base" ]]; then
-          if [[ -n "$snap_prompt" ]]; then
-            "$HOME/dotfiles/scripts/agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" "$snap_prompt" >/dev/null 2>&1 || true
-          else
-            "$HOME/dotfiles/scripts/agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" >/dev/null 2>&1 || true
-          fi
-        else
-          "$HOME/dotfiles/scripts/agent-session.sh" "$snap_session" "${snap_agent:-claude}"${snap_prompt:+ }$snap_prompt >/dev/null 2>&1 || true
-        fi
-        ;;
-      zellij)
-        if [[ -n "$snap_branch" && -n "$snap_base" ]]; then
-          if [[ -n "$snap_prompt" ]]; then
-            "$HOME/dotfiles/scripts/zellij-agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" "$snap_prompt" >/dev/null 2>&1 || true
-          else
-            "$HOME/dotfiles/scripts/zellij-agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" >/dev/null 2>&1 || true
-          fi
-        else
-          "$HOME/dotfiles/scripts/zellij-agent-session.sh" "$snap_session" "${snap_agent:-claude}"${snap_prompt:+ }$snap_prompt >/dev/null 2>&1 || true
-        fi
-        ;;
-    esac
+    echo "[agent] resurrecting tmux session '$snap_session'..." >&2
+    if [[ -n "$snap_branch" && -n "$snap_base" ]]; then
+      if [[ -n "$snap_prompt" ]]; then
+        "$HOME/dotfiles/scripts/agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" "$snap_prompt" >/dev/null 2>&1 || true
+      else
+        "$HOME/dotfiles/scripts/agent-worktree.sh" "$snap_branch" --base "$snap_base" --agent "${snap_agent:-claude}" >/dev/null 2>&1 || true
+      fi
+    else
+      "$HOME/dotfiles/scripts/agent-session.sh" "$snap_session" "${snap_agent:-claude}"${snap_prompt:+ }$snap_prompt >/dev/null 2>&1 || true
+    fi
   else
     # Print a quiet hint so the user knows they can resurrect.
-    echo "[agent] dead session '$snap_session' ($snap_mux) available; set AGENT_AUTO_RESURRECT=true to auto-resurrect" >&2
+    echo "[agent] dead tmux session '$snap_session' available; set AGENT_AUTO_RESURRECT=true to auto-resurrect" >&2
   fi
 }
 

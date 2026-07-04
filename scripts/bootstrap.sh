@@ -456,9 +456,8 @@ mkdir -p ~/.config ~/.local/bin ~/.local/share ~/.cache
 cd "$DOTFILES_DIR"
 
 # Link individual config directories as SYMLINKS — the repo is the single source
-# of truth. ghostty is a client-side terminal: skip on server mode.
-LINK_CONFIGS="nvim tmux zellij starship git"
-[[ "$MODE" == "wsl" ]] && LINK_CONFIGS="$LINK_CONFIGS ghostty"
+# of truth. WezTerm is the local terminal and lives in its own repo.
+LINK_CONFIGS="nvim tmux starship git"
 for dir in $LINK_CONFIGS; do
   if [[ -d "config/$dir" ]]; then
     if [[ -e "$HOME/.config/$dir" && ! -L "$HOME/.config/$dir" ]]; then
@@ -550,12 +549,12 @@ if [[ -f "$HOME/.tmux/plugins/tpm/bin/install_plugins" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 15c. USER SYSTEMD SERVICES — tmux + Zellij persistence
+# 15c. USER SYSTEMD SERVICES — tmux persistence
 # ---------------------------------------------------------------------------
 
 log "Linking user systemd units..."
 mkdir -p "$HOME/.config/systemd/user"
-for unit in zellij.service tmux.service tmux-snapshot.service tmux-snapshot.timer; do
+for unit in tmux.service tmux-snapshot.service tmux-snapshot.timer; do
   src="$DOTFILES_DIR/config/systemd/user/$unit"
   dst="$HOME/.config/systemd/user/$unit"
   if [[ -f "$src" ]]; then
@@ -570,14 +569,14 @@ done
 
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || true
-  log "Enabling tmux + Zellij persistence services..."
-  systemctl --user enable zellij.service tmux.service tmux-snapshot.timer >/dev/null 2>&1 \
+  log "Enabling tmux persistence services..."
+  systemctl --user enable tmux.service tmux-snapshot.timer >/dev/null 2>&1 \
     && success "Persistence services enabled" \
-    || warn "Could not enable persistence services — enable manually with: systemctl --user enable tmux.service zellij.service tmux-snapshot.timer"
-  log "Starting tmux + Zellij persistence services..."
-  systemctl --user start tmux.service zellij.service tmux-snapshot.timer >/dev/null 2>&1 \
+    || warn "Could not enable persistence services — enable manually with: systemctl --user enable tmux.service tmux-snapshot.timer"
+  log "Starting tmux persistence services..."
+  systemctl --user start tmux.service tmux-snapshot.timer >/dev/null 2>&1 \
     && success "Persistence services started" \
-    || warn "Could not start persistence services — start manually with: systemctl --user start tmux.service zellij.service tmux-snapshot.timer"
+    || warn "Could not start persistence services — start manually with: systemctl --user start tmux.service tmux-snapshot.timer"
 fi
 
 # ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@ return {
   -- OIL.NVIM — file browser that edits the filesystem like a buffer
   -- WHY oil over NerdTree/neo-tree: oil is modal, fast, and you edit files
   -- the same way you edit text. Rename files with 'cw'. Delete with 'dd'.
-  -- Works great in tmux or zellij pane splits.
+  -- Works great in tmux pane splits.
   -- ---------------------------------------------------------------------------
   {
     "stevearc/oil.nvim",

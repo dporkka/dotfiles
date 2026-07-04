@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =============================================================================
-# agent-dashboard.sh — unified fzf "mission control" for every running agent.
+# agent-dashboard.sh — fzf "mission control" for every running tmux agent.
 #
-# Lists every agent recorded in ~/.local/state/agents/registry/, regardless of
-# whether it lives in tmux or Zellij. Enter jumps straight to it.
-# Bound to `prefix a` in tmux.conf and `Alt d` / `Ctrl-b a` in config.kdl.
+# Lists every tmux agent recorded in ~/.local/state/agents/registry/. Enter
+# jumps straight to it.
+# Bound to `prefix a` in tmux.conf.
 # =============================================================================
 set -euo pipefail
 
@@ -15,20 +15,8 @@ if [[ "${1:-}" == "--preview" ]]; then
   line="${2:-}"
   [[ -n "$line" ]] || exit 0
   session="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $1); print $1}' <<< "$line")"
-  mux="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $2); print $2}' <<< "$line")"
-  case "$mux" in
-    tmux)
-      tmux capture-pane -ep -t "${session}:1" 2>/dev/null \
-        || echo "tmux session '${session}' not reachable"
-      ;;
-    zellij)
-      zellij --session "$session" action list-tabs 2>/dev/null \
-        || echo "zellij session '${session}' not reachable"
-      ;;
-    *)
-      echo "unknown multiplexer: $mux"
-      ;;
-  esac
+  tmux capture-pane -ep -t "${session}:1" 2>/dev/null \
+    || echo "tmux session '${session}' not reachable"
   exit 0
 fi
 
@@ -42,7 +30,7 @@ records="$("$REGISTRY" list --json 2>/dev/null || echo '[]')"
 [[ "$records" != "[]" ]] || { echo "no agents running"; exit 0; }
 
 # Build display lines: session<TAB>mux<TAB>state-glyph<TAB>name<TAB>worktree<TAB>agent_cmd
-lines="$(jq -r --arg home "$HOME" '.[] | [
+lines="$(jq -r --arg home "$HOME" '.[] | select(.multiplexer == "tmux") | [
   .session,
   .multiplexer,
   (.state |
@@ -69,22 +57,10 @@ sel="$(printf '%s\n' "$lines" \
 [[ -n "$sel" ]] || exit 0
 
 session="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $1); print $1}' <<< "$sel")"
-mux="$(awk -F'\t' '{gsub(/[[:space:]]+$/, "", $2); print $2}' <<< "$sel")"
 
-case "$mux" in
-  tmux)
-    if [[ -n "${TMUX:-}" ]]; then
-      tmux switch-client -t "$session" 2>/dev/null || true
-      tmux select-window -t "${session}:1" 2>/dev/null || true
-    else
-      tmux attach -t "$session" 2>/dev/null || true
-    fi
-    ;;
-  zellij)
-    if [[ -n "${ZELLIJ:-}" ]]; then
-      zellij action switch-session "$session" 2>/dev/null || true
-    else
-      zellij attach "$session" 2>/dev/null || true
-    fi
-    ;;
-esac
+if [[ -n "${TMUX:-}" ]]; then
+  tmux switch-client -t "$session" 2>/dev/null || true
+  tmux select-window -t "${session}:1" 2>/dev/null || true
+else
+  tmux attach -t "$session" 2>/dev/null || true
+fi

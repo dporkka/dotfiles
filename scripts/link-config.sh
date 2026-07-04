@@ -89,10 +89,8 @@ echo ""
 
 # ------------------------------------------------------------------------------
 # XDG config directories
-# ghostty is a client-side terminal: skip on server
 # ------------------------------------------------------------------------------
-LINK_DIRS="nvim tmux zellij"
-[[ "$MODE" == "wsl" ]] && LINK_DIRS="$LINK_DIRS ghostty"
+LINK_DIRS="nvim tmux"
 for d in $LINK_DIRS; do
   # Preserve Neovim's generated state file across the dir swap (regenerates anyway).
   if [[ "$d" == nvim && -f "$HOME/.config/nvim/lazyvim.json" && ! -L "$HOME/.config/nvim" ]]; then
@@ -134,24 +132,24 @@ for file in "$DOTS"/home/.gitconfig "$DOTS"/home/.gitignore_global; do
 done
 
 # ------------------------------------------------------------------------------
-# User systemd units for tmux + Zellij background services (AI agent persistence).
+# User systemd units for tmux background services (AI agent persistence).
 # Link only the specific units rather than the whole systemd directory so other
 # user units (e.g. from home-manager) are not shadowed.
 # ------------------------------------------------------------------------------
 mkdir -p "$HOME/.config/systemd/user"
-for unit in zellij.service tmux.service tmux-snapshot.service tmux-snapshot.timer backup-home-gdrive.service backup-home-gdrive.timer; do
+for unit in tmux.service tmux-snapshot.service tmux-snapshot.timer backup-home-gdrive.service backup-home-gdrive.timer; do
   backup_then_link "$DOTS/config/systemd/user/$unit" "$HOME/.config/systemd/user/$unit"
 done
 
 # Best-effort reload + enable so services survive logout/reboot.
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || true
-  systemctl --user enable zellij.service tmux.service tmux-snapshot.timer >/dev/null 2>&1 || true
+  systemctl --user enable tmux.service tmux-snapshot.timer >/dev/null 2>&1 || true
 fi
 
 echo ""
 echo "Done. (mode: $MODE, shell: $SHELL_CHOICE) Live config now symlinks to $DOTS — one edit, everywhere."
 echo "Note: live config follows the repo's checked-out branch. Secrets stay in"
 echo "      ~/.config/zsh/secrets.zsh (untracked). Remove old *.bak.* once happy."
-echo "      Start services with: systemctl --user start tmux.service zellij.service"
+echo "      Start services with: systemctl --user start tmux.service"
 echo "      Backup timer:        systemctl --user start backup-home-gdrive.timer"

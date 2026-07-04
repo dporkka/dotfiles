@@ -38,7 +38,7 @@ bash ~/dotfiles/scripts/setup-workstation.sh --mode desktop --shell zsh --with-r
 ## What it does
 
 1. **Clones/updates repos** into `~/`:
-   - `dotfiles` — main config (Neovim, Tmux, Zellij, shell configs, scripts, systemd units)
+   - `dotfiles` — main config (Neovim, Tmux, shell configs, scripts, systemd units)
    - `command-tower-wezterm` — WezTerm config
    - `linux-keyboard-setup` — GNOME keyboard tweaks (desktop only)
    - `dev-setup` — language runtimes + LSPs (only with `--with-runtimes`)
@@ -49,7 +49,7 @@ bash ~/dotfiles/scripts/setup-workstation.sh --mode desktop --shell zsh --with-r
    - Installs Neovim, Starship, Zoxide, eza, pnpm, nvm, uv, lazygit, delta, GitHub CLI
    - Installs Tmux Plugin Manager (TPM) and core plugins
    - Symlinks configs from the repo based on the chosen shell
-   - Enables user systemd units for tmux/Zellij persistence
+   - Enables user systemd units for tmux persistence
    - Sets the chosen shell as default
 
 3. **Links WezTerm config** from `~/wezterm-config` to `~/.config/wezterm`.

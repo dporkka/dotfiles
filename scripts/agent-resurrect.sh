@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
-# agent-resurrect.sh — bring dead agent records back to life.
+# agent-resurrect.sh — bring dead tmux agent records back to life.
 #
-# Scans ~/.local/state/agents/registry/ for records whose multiplexer session is
+# Scans ~/.local/state/agents/registry/ for records whose tmux session is
 # no longer alive but whose state is not "exited", then recreates the session
 # using the recorded worktree/branch/base/agent_cmd.
 #
-# Worktree agents are relaunched through agent-worktree.sh / zellij-agent-worktree.sh
-# so the full agent pane + watcher + review layout is restored. Simple session
-# agents are recreated as a fresh tmux/zellij session in the recorded directory.
+# Worktree agents are relaunched through agent-worktree.sh so the full agent
+# pane + watcher + review layout is restored. Simple session agents are recreated
+# as a fresh tmux session in the recorded directory.
 #
 # Usage:
 #   agent-resurrect.sh list               # show resurrectable records
@@ -21,39 +21,26 @@ set -euo pipefail
 
 REGISTRY="${DOTS:-$HOME/dotfiles}/scripts/agent-registry.sh"
 REGISTRY_DIR="${AGENT_REGISTRY_DIR:-$HOME/.local/state/agents/registry}"
-LAYOUT_DIR="${DOTS:-$HOME/dotfiles}/config/zellij/layouts"
-LAYOUT="${LAYOUT_DIR}/agent.kdl"
 
 usage() {
   echo "Usage: $(basename "$0") {list|all|<session>} [--dry-run]" >&2
   exit 2
 }
 
-# Check whether a session is still alive in its multiplexer.
+# Check whether a tmux session is still alive.
 session_alive() {
-  local mux="$1"
-  local sess="$2"
-  case "$mux" in
-    tmux)
-      tmux has-session -t "$sess" 2>/dev/null
-      ;;
-    zellij)
-      zellij list-sessions --no-formatting 2>/dev/null | awk '{print $1}' | grep -qxF "$sess"
-      ;;
-    *)
-      return 1
-      ;;
-  esac
+  local sess="$1"
+  tmux has-session -t "$sess" 2>/dev/null
 }
 
-# List dead-but-not-exited records that are candidates for resurrection.
+# List dead-but-not-exited tmux records that are candidates for resurrection.
 list_dead() {
   local records
   records="$("$REGISTRY" list --json 2>/dev/null || echo '[]')"
-  jq -r '.[] | select(.state != "exited") | "\(.session)\t\(.multiplexer)\t\(.state)\t\(.worktree // "-")\t\(.agent_cmd // "-")"' <<< "$records" \
+  jq -r '.[] | select(.state != "exited" and .multiplexer == "tmux") | "\(.session)\t\(.multiplexer)\t\(.state)\t\(.worktree // "-")\t\(.agent_cmd // "-")"' <<< "$records" \
     | while IFS=$'\t' read -r session mux state worktree agent_cmd; do
         [[ -n "$session" && -n "$mux" ]] || continue
-        if ! session_alive "$mux" "$session"; then
+        if ! session_alive "$session"; then
           printf '%s\t%s\t%s\t%s\t%s\n' "$session" "$mux" "$state" "$worktree" "$agent_cmd"
         fi
       done
@@ -112,20 +99,15 @@ resurrect_worktree() {
   fi
 
   local base_arg="${base:-main}"
-  local launcher
-  case "$mux" in
-    tmux)  launcher="$HOME/dotfiles/scripts/agent-worktree.sh" ;;
-    zellij) launcher="$HOME/dotfiles/scripts/zellij-agent-worktree.sh" ;;
-    *)     echo "resurrect: unknown multiplexer '$mux'" >&2; return 1 ;;
-  esac
+  local launcher="$HOME/dotfiles/scripts/agent-worktree.sh"
 
   if [[ "$dry_run" == true ]]; then
-    echo "Would resurrect $mux worktree session $session in $repo_root:"
+    echo "Would resurrect tmux worktree session $session in $repo_root:"
     echo "  $launcher \"$branch\" --base \"$base_arg\" --agent \"$agent_arg\"${prompt_arg:+ -- }$prompt_arg"
     return 0
   fi
 
-  echo "Resurrecting $mux worktree session $session ..."
+  echo "Resurrecting tmux worktree session $session ..."
   (
     cd "$repo_root"
     if [[ -n "$prompt_arg" ]]; then
@@ -152,34 +134,18 @@ resurrect_simple() {
   fi
 
   if [[ "$dry_run" == true ]]; then
-    echo "Would resurrect $mux session $session in $worktree:"
+    echo "Would resurrect tmux session $session in $worktree:"
     echo "  $agent_cmd"
     return 0
   fi
 
-  echo "Resurrecting $mux session $session ..."
+  echo "Resurrecting tmux session $session ..."
 
-  case "$mux" in
-    tmux)
-      tmux new-session -d -s "$session" -c "$worktree"
-      tmux set-option -t "$session" @is_agent 1 2>/dev/null || true
-      tmux rename-window -t "$session:1" "agent" 2>/dev/null || true
-      tmux send-keys -t "${session}:1" \
-        "$(printf '%q' "$agent_cmd"); \"$HOME/dotfiles/scripts/agent-registry.sh\" set-state \"$session\" exited" Enter
-      ;;
-    zellij)
-      if [[ ! -f "$LAYOUT" ]]; then
-        echo "resurrect: layout not found: $LAYOUT" >&2
-        return 1
-      fi
-      export ZELLIJ_AGENT_CMD="$agent_cmd"
-      (cd "$worktree" && zellij --layout "$LAYOUT" attach -b "$session")
-      ;;
-    *)
-      echo "resurrect: unknown multiplexer '$mux'" >&2
-      return 1
-      ;;
-  esac
+  tmux new-session -d -s "$session" -c "$worktree"
+  tmux set-option -t "$session" @is_agent 1 2>/dev/null || true
+  tmux rename-window -t "$session:1" "agent" 2>/dev/null || true
+  tmux send-keys -t "${session}:1" \
+    "$(printf '%q' "$agent_cmd"); \"$HOME/dotfiles/scripts/agent-registry.sh\" set-state \"$session\" exited" Enter
 
   "$REGISTRY" set-state "$session" idle >/dev/null 2>&1 || true
 }
@@ -207,7 +173,12 @@ resurrect() {
     return 0
   fi
 
-  if session_alive "$mux" "$session"; then
+  if [[ "$mux" != "tmux" ]]; then
+    echo "resurrect: $session is not a tmux session; skipping" >&2
+    return 0
+  fi
+
+  if session_alive "$session"; then
     echo "resurrect: $session is already alive ($mux)" >&2
     "$REGISTRY" set-state "$session" idle >/dev/null 2>&1 || true
     return 0

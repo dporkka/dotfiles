@@ -6,7 +6,6 @@ let
     just
     tmux
     tmuxp
-    zellij
     fzf
     zoxide
     starship

@@ -1,0 +1,9 @@
+[Unit]
+Description=Snapshot tmux agent registry and sessions
+
+[Service]
+Type=oneshot
+Environment="DOTS=%h/dotfiles"
+Environment="PATH=%h/.nix-profile/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/dotfiles/scripts/tmux-agent-persistence.sh save
+ExecStart=%h/dotfiles/scripts/agent-registry.sh snapshot

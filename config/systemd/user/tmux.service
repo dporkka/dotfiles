@@ -1,0 +1,17 @@
+[Unit]
+Description=tmux terminal multiplexer server (session persistence)
+Documentation=man:tmux(1)
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment="DOTS=%h/dotfiles"
+Environment="PATH=%h/.nix-profile/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStartPre=-/bin/sh -c 'mkdir -p %h/.local/state/tmux/resurrect %h/.local/state/agents/registry %h/.local/state/agents/snapshots'
+ExecStart=%h/dotfiles/scripts/tmux-service.sh daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

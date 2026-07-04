@@ -1,0 +1,11 @@
+[Unit]
+Description=Backup home directory to Google Drive
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+Environment="DOTS=%h/dotfiles"
+Environment="PATH=%h/.nix-profile/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="RCLONE_REMOTE=gdrive"
+ExecStart=%h/dotfiles/scripts/backup-home-gdrive.sh

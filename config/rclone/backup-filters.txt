@@ -1,0 +1,82 @@
+# =============================================================================
+# rclone backup filters — whole-home backup to Google Drive
+# =============================================================================
+# Syntax: + = include, - = exclude. Order matters (first match wins).
+# Keep small, valuable state; exclude caches, build artifacts, secrets, and
+# large transient files.
+# =============================================================================
+
+# --- Explicitly keep (must appear before their parent exclusions) ---
+
+# tmux resurrect state so sessions can be rebuilt after a restore
++ .local/state/tmux/resurrect/**
+
+# SSH public keys and config (private keys excluded below)
++ .ssh/config
++ .ssh/known_hosts
++ .ssh/authorized_keys
++ .ssh/id_*.pub
+
+# --- Exclusions ---
+
+# Caches and package stores
+- .cache/**
+- .npm/**
+- .pnpm-store/**
+- .cargo/registry/**
+- .rustup/**
+- .local/share/Trash/**
+- .local/share/pnpm/**
+- .local/share/nvim/lazy/**
+- .local/state/**          # runtime state; tmux resurrect is kept above
+
+# Build artifacts and dependency trees
+- node_modules/**
+- .venv/**
+- __pycache__/**
+- target/                  # Rust build output
+- build/**
+- dist/**
+- .next/**
+- .turbo/**
+- *.egg-info/**
+
+# Version control — history bloats backups; re-clone from GitHub if needed
+- .git/**
+
+# Nix runtime links
+- .nix-profile/**
+
+# Secrets and credentials
+- .ssh/id_*                # private keys (public keys kept above)
+- .config/zsh/secrets.zsh
+- .env
+- .env.*
+- .claude/**
+- .anthropic/**
+- .pki/**
+- .config/rclone/rclone.conf
+- **/secrets.zsh
+- **/.env
+
+# Large media / downloads (uncomment if you do NOT want these backed up)
+- Downloads/**
+# - Pictures/**
+# - Music/**
+# - Videos/**
+
+# Large or temporary files
+- *.iso
+- *.img
+- *.qcow2
+- *.vmdk
+- *.tar.gz
+- *.zip
+- *.log
+- *.tmp
+- *.swp
+- *.swo
+- *~
+
+# --- Include everything else ---
++ *

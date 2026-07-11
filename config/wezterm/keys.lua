@@ -318,19 +318,9 @@ function M.apply(config)
     })
   end
 
-  -- Mouse: middle-click pastes primary selection; CTRL+click opens hyperlinks.
-  config.mouse_bindings = {
-    {
-      event = { Down = { streak = 1, button = "Middle" } },
-      mods = "NONE",
-      action = act.PasteFrom("PrimarySelection"),
-    },
-    {
-      event = { Up = { streak = 1, button = "Left" } },
-      mods = "CTRL",
-      action = act.OpenLinkAtMouseCursor,
-    },
-  }
+  -- Mouse bindings: WezTerm defaults already cover left-click selection,
+  -- right-click context menu (Copy/Paste), middle-click paste, and
+  -- CTRL+click hyperlinks. No custom overrides needed.
 
   -- OSC 52 / advanced input settings.
   config.enable_wayland = true

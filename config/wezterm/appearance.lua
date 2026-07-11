@@ -49,9 +49,6 @@ function M.apply(config)
     brightness = 0.65,
   }
 
-  -- Enable modern terminal extensions used by TUIs (lazygit, fzf, nvim, etc.).
-  config.enable_kitty_graphics = true
-  config.enable_kitty_keyboard = true
 
   -- Visual bell config (audible bell is disabled in status.lua).
   config.visual_bell = {

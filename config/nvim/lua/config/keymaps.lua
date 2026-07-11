@@ -158,6 +158,68 @@ map("n", "<C-Right>", "<cmd>vertical resize +2<cr>", opts)
 -- AI CONTEXT
 -- ---------------------------------------------------------------------------
 
+--- Get LSP diagnostics and hover info for the current buffer/symbol.
+--- Returns a formatted Markdown string, or nil if no LSP is attached.
+local function get_lsp_context()
+  local bufnr = vim.api.nvim_get_current_buf()
+  local clients = vim.lsp.get_clients({ bufnr = bufnr })
+  if #clients == 0 then
+    return nil
+  end
+
+  local parts = {}
+
+  -- Diagnostics
+  local diagnostics = vim.diagnostic.get(bufnr)
+  if #diagnostics > 0 then
+    local rel = vim.fn.fnamemodify(vim.api.nvim_buf_get_name(bufnr), ":.")
+    local diag_lines = {}
+    local count = math.min(#diagnostics, 10)
+    for i = 1, count do
+      local d = diagnostics[i]
+      local sev = ({ "ERROR", "WARN", "INFO", "HINT" })[d.severity] or "HINT"
+      local msg = d.message:gsub("\n", " "):gsub("\r", "")
+      table.insert(diag_lines, string.format("- [%s] L%d: %s", sev, d.lnum + 1, msg))
+    end
+    table.insert(parts, "### Diagnostics (" .. rel .. ")\n" .. table.concat(diag_lines, "\n"))
+  end
+
+  -- Hover info (symbol under cursor)
+  local ok, results = pcall(vim.lsp.buf_request_sync, bufnr, "textDocument/hover", vim.lsp.util.make_position_params(), 1000)
+  if ok and results then
+    for _, res in pairs(results) do
+      if res and res.result and res.result.contents then
+        local contents = res.result.contents
+        local hover_text
+        if type(contents) == "string" then
+          hover_text = contents
+        elseif type(contents) == "table" and contents.value then
+          hover_text = contents.value
+        elseif type(contents) == "table" and #contents > 0 then
+          local texts = {}
+          for _, item in ipairs(contents) do
+            if type(item) == "string" then
+              table.insert(texts, item)
+            elseif type(item) == "table" and item.value then
+              table.insert(texts, item.value)
+            end
+          end
+          hover_text = table.concat(texts, "\n")
+        end
+        if hover_text and #hover_text > 0 then
+          table.insert(parts, "### Symbol Info\n```\n" .. hover_text .. "\n```")
+        end
+      end
+    end
+  end
+
+  if #parts == 0 then
+    return nil
+  end
+
+  return "## LSP Context\n" .. table.concat(parts, "\n\n")
+end
+
 -- Yank the structural block (function / class / method / struct) surrounding
 -- the cursor as a fenced Markdown snippet with filename, for LLM tools.
 local function copy_structural_context()
@@ -189,7 +251,15 @@ local function copy_structural_context()
   local text = vim.treesitter.get_node_text(node, bufnr)
   local ft = vim.bo[bufnr].filetype
 
-  vim.fn.setreg("+", string.format("### File: %s\n```%s\n%s\n```", rel, ft, text))
+  local lsp_ctx = get_lsp_context()
+  local code_block = string.format("### File: %s\n```%s\n%s\n```", rel, ft, text)
+  local output
+  if lsp_ctx then
+    output = lsp_ctx .. "\n\n## Code\n" .. code_block
+  else
+    output = code_block
+  end
+  vim.fn.setreg("+", output)
   vim.notify("Structural context copied  →  clipboard", vim.log.levels.INFO)
 end
 
@@ -202,9 +272,16 @@ map("v", "<leader>kf", function()
   local end_line = vim.fn.line("'>")
   local lines = vim.fn.getline(start_line, end_line)
   local ft = vim.bo.filetype
-  local block = string.format("```%s:%d-%d %s\n%s\n```\n",
+  local code_block = string.format("```%s:%d-%d %s\n%s\n```",
     ft, start_line, end_line, file,
     table.concat(lines, "\n"))
-  vim.fn.setreg("+", block)
+  local lsp_ctx = get_lsp_context()
+  local output
+  if lsp_ctx then
+    output = lsp_ctx .. "\n\n## Code\n" .. code_block
+  else
+    output = code_block
+  end
+  vim.fn.setreg("+", output)
   vim.notify("Context block copied → clipboard", vim.log.levels.INFO)
 end, { desc = "Copy selection as context block" })

@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# =============================================================================
+# agent-fanout.sh — fan out a high-level task into parallel sub-agents.
+#
+# Takes a task description and one or more subtasks. For each subtask it creates
+# a dedicated git worktree + tmux session and launches an agent via
+# agent-worktree.sh. Sessions are tagged @is_agent so the agent dashboard
+# (prefix a) sees them.
+#
+# Usage:
+#   agent-fanout.sh [options] "task description" subtask1 subtask2 ...
+#   agent-fanout.sh [options] "task description"    # interactive subtask prompt
+#
+# Options:
+#   --agents N       max parallel agents (default: 4)  [reserved for future use]
+#   --base <branch>  base branch to branch from (default: main)
+#   --wait           block until all agents finish
+#   --merge          attempt git merge of all agent branches after completion
+#   --agent <cmd>    agent command to run (default: claude)
+#   -h, --help       show this message
+#
+# Examples:
+#   agent-fanout.sh "refactor auth" "extract middleware" "add tests"
+#   agent-fanout.sh --agents 2 --base develop "fix bugs" "fix login"
+#   agent-fanout.sh --wait "upgrade deps" "audit packages" "update actions"
+#
+# Each agent runs in:
+#   worktree: $(dirname $REPO_ROOT)/${REPO}-fanout-<slug>-<NN>
+#   branch:   fanout/<slug>-<NN>
+#   session:  ${REPO}-fanout-<slug>-<NN>
+# =============================================================================
+set -euo pipefail
+
+SCRIPT_NAME="${0##*/}"
+
+# ---- defaults ---------------------------------------------------------------
+MAX_AGENTS=4
+BASE="main"
+AGENT="claude"
+WAIT_FLAG=0
+MERGE_FLAG=0
+TASK=""
+SUBTASKS=()
+
+# ---- parse flags ------------------------------------------------------------
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --agents) MAX_AGENTS="${2:?--agents needs a value}";  shift 2 ;;
+    --base)   BASE="${2:?--base needs a value}";           shift 2 ;;
+    --wait)   WAIT_FLAG=1;                                 shift   ;;
+    --merge)  MERGE_FLAG=1;                                shift   ;;
+    --agent)  AGENT="${2:?--agent needs a value}";         shift 2 ;;
+    -h|--help) sed -n '3,24p' "$0"; exit 0 ;;
+    --)       shift; break ;;
+    -*)       echo "${SCRIPT_NAME}: unknown flag: $1" >&2; exit 2 ;;
+    *)        break ;;
+  esac
+done
+
+# ---- positional: task + subtasks --------------------------------------------
+TASK="${1:-}"
+if [[ -z "$TASK" ]]; then
+  echo "Usage: ${SCRIPT_NAME} [options] \"task description\" subtask1 subtask2 ..." >&2
+  exit 2
+fi
+shift
+
+if [[ $# -gt 0 ]]; then
+  SUBTASKS=("$@")
+else
+  echo "Enter subtasks (one per line, Ctrl-D when done):" >&2
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && SUBTASKS+=("$line")
+  done
+fi
+
+if [[ ${#SUBTASKS[@]} -eq 0 ]]; then
+  echo "${SCRIPT_NAME}: no subtasks provided." >&2
+  exit 1
+fi
+
+# ---- prereqs ----------------------------------------------------------------
+command -v tmux >/dev/null 2>&1 \
+  || { echo "${SCRIPT_NAME}: tmux required" >&2; exit 1; }
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" \
+  || { echo "${SCRIPT_NAME}: not in a git repository" >&2; exit 1; }
+REPO_NAME="$(basename "$REPO_ROOT")"
+
+WORKTREE_SCRIPT="$HOME/dotfiles/scripts/agent-worktree.sh"
+REGISTRY_SCRIPT="$HOME/dotfiles/scripts/agent-registry.sh"
+
+# We need to be in tmux to avoid focus-stealing issues with agent-worktree.sh.
+if [[ -z "${TMUX:-}" ]]; then
+  echo "${SCRIPT_NAME}: must be run inside a tmux session" >&2
+  exit 1
+fi
+
+# ---- derive slug from the main task -----------------------------------------
+# Lowercase, collapse non-alphanumeric to dashes, strip leading/trailing dashes,
+# truncate to 40 chars to keep branch names readable.
+TASK_SLUG="$(echo "$TASK" \
+  | tr '[:upper:]' '[:lower:]' \
+  | sed 's/[^a-z0-9]/-/g; s/--*/-/g; s/^-//; s/-$//' \
+  | head -c 40 \
+  | sed 's/-$//')"
+[[ -n "$TASK_SLUG" ]] || TASK_SLUG="task"
+
+# ---- save current tmux focus so we can restore it after each fan-out --------
+ORIG_SESSION="$(tmux display-message -p '#S' 2>/dev/null || true)"
+
+# ---- fan out ----------------------------------------------------------------
+SUMMARY_LINES=()
+ACTIVE_SESSIONS=()
+
+for (( i = 0; i < ${#SUBTASKS[@]}; i++ )); do
+  subtask="${SUBTASKS[$i]}"
+  branch="fanout/${TASK_SLUG}-$(printf '%02d' $((i+1)))"
+  slug="${branch//\//-}"
+  session="${REPO_NAME}-${slug}"
+
+  echo "=== [$((i+1))/${#SUBTASKS[@]}] ${subtask} ==="
+  echo "  branch: ${branch}  session: ${session}"
+
+  # Delegate worktree + session creation to agent-worktree.sh.
+  # This handles idempotency (existing worktree/session are resumed).
+  # agent-worktree.sh switches focus to the new session — we restore focus
+  # afterward so the current terminal stays put.
+  if [[ -x "$WORKTREE_SCRIPT" ]]; then
+    "$WORKTREE_SCRIPT" --base "$BASE" --agent "$AGENT" "$branch" "$subtask" || {
+      echo "  ${SCRIPT_NAME}: agent-worktree.sh failed for '${subtask}', continuing..." >&2
+    }
+  else
+    echo "  ${SCRIPT_NAME}: ${WORKTREE_SCRIPT} not found — cannot create worktree." >&2
+  fi
+
+  # Tag the session with fanout metadata so the dashboard and registry show it
+  # as part of this fan-out group.
+  if tmux has-session -t "$session" 2>/dev/null; then
+    tmux set-option -t "$session" @fanout_task "$TASK" 2>/dev/null || true
+
+    if [[ -x "$REGISTRY_SCRIPT" ]]; then
+      "$REGISTRY_SCRIPT" set "$session" fanout_task "$TASK" 2>/dev/null || true
+    fi
+
+    SUMMARY_LINES+=("Agent $((i+1)) (session: ${session}) working on: ${subtask}")
+    ACTIVE_SESSIONS+=("$session")
+  else
+    echo "  ${SCRIPT_NAME}: session ${session} was not created." >&2
+  fi
+
+  # Restore original session focus.
+  if [[ -n "$ORIG_SESSION" ]]; then
+    tmux switch-client -t "$ORIG_SESSION" 2>/dev/null || true
+  fi
+done
+
+# ---- print summary ----------------------------------------------------------
+echo ""
+echo "=========================================="
+echo "  Fan-out: ${#SUBTASKS[@]} agents launched"
+echo "  Task:    ${TASK}"
+echo "  Base:    ${BASE}"
+echo "=========================================="
+for line in "${SUMMARY_LINES[@]}"; do
+  echo "  ${line}"
+done
+echo "=========================================="
+echo "  All agents tagged @is_agent — visible via agent dashboard (prefix a)"
+echo "=========================================="
+
+# ---- optional: wait for all agents to finish --------------------------------
+if [[ $WAIT_FLAG -eq 1 ]]; then
+  echo ""
+  echo "Waiting for agents to finish..."
+
+  while : ; do
+    any_alive=0
+    for session in "${ACTIVE_SESSIONS[@]}"; do
+      if tmux has-session -t "$session" 2>/dev/null; then
+        any_alive=1
+        break
+      fi
+    done
+    [[ $any_alive -eq 1 ]] || break
+    echo -n "."
+    sleep 5
+  done
+  echo ""
+  echo "All agents finished."
+
+  # Best-effort registry state update.
+  for session in "${ACTIVE_SESSIONS[@]}"; do
+    if [[ -x "$REGISTRY_SCRIPT" ]]; then
+      "$REGISTRY_SCRIPT" set-state "$session" done 2>/dev/null || true
+    fi
+  done
+
+  # ---- optional: merge all agent branches -----------------------------------
+  if [[ $MERGE_FLAG -eq 1 ]]; then
+    echo ""
+    echo "Merging agent branches into ${BASE}..."
+    if ! git -C "$REPO_ROOT" checkout "$BASE" 2>/dev/null; then
+      echo "  Could not checkout ${BASE}" >&2
+      exit 1
+    fi
+
+    for (( i = 0; i < ${#SUBTASKS[@]}; i++ )); do
+      branch="fanout/${TASK_SLUG}-$(printf '%02d' $((i+1)))"
+      echo "  Merging ${branch}..."
+      if git -C "$REPO_ROOT" merge --no-ff -m "merge(${branch}): ${SUBTASKS[$i]}" "$branch" 2>/dev/null; then
+        echo "    ok merged"
+      else
+        echo "    !! merge conflict in ${branch} — resolve manually. Aborting merge." >&2
+        git -C "$REPO_ROOT" merge --abort 2>/dev/null || true
+      fi
+    done
+
+    echo ""
+    echo "Merge complete."
+  fi
+fi

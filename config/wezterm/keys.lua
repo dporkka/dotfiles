@@ -1,0 +1,341 @@
+-- keys.lua -- Keybindings for panes, tabs, windows, clipboard, marks, and hyperlinks.
+
+local wezterm = require("wezterm")
+local act = wezterm.action
+local utils = require("utils")
+
+local M = {}
+
+-- Pane marks stored in memory for the current WezTerm process.
+local pane_marks = {}
+
+function M.apply(config)
+  config.leader = { key = "Space", mods = "CTRL", timeout_milliseconds = 1000 }
+
+  config.key_tables = config.key_tables or {}
+
+  -- Smart split helpers that clone the current pane's cwd.
+  local function smart_split(direction)
+    return wezterm.action_callback(function(window, pane)
+      local cwd = utils.cwd_of(pane)
+      pane:split({
+        direction = direction,
+        size = { Percent = 50 },
+        cwd = cwd,
+        domain = { DomainName = pane:get_domain_name() },
+      })
+    end)
+  end
+
+  -- Pane mark helpers.
+  local function set_mark(label)
+    return wezterm.action_callback(function(window, pane)
+      pane_marks[label] = pane:pane_id()
+      pcall(function()
+        window:toast_notification("Pane Mark", "Mark '" .. label .. "' set", nil, 1500)
+      end)
+    end)
+  end
+
+  local function jump_to_mark()
+    return wezterm.action_callback(function(window, pane)
+      window:perform_action(
+        act.PromptInputLine({
+          description = "Jump to mark (a-z)",
+          action = wezterm.action_callback(function(inner_window, inner_pane, line)
+            if not line or #line ~= 1 then
+              return
+            end
+            local pane_id = pane_marks[line]
+            if pane_id then
+              inner_window:perform_action(act.ActivatePaneById(pane_id), inner_pane)
+            else
+              pcall(function()
+                inner_window:toast_notification("Pane Mark", "No mark '" .. line .. "' set", nil, 1500)
+              end)
+            end
+          end),
+        }),
+        pane
+      )
+    end)
+  end
+
+  -- Spawn a new tab on a chosen domain, mirroring the current pane's cwd.
+  local function spawn_on_domain_with_cwd()
+    return wezterm.action_callback(function(window, pane)
+      local cwd = utils.cwd_of(pane)
+      window:perform_action(
+        act.PromptInputLine({
+          description = "Domain (local, wsl2, mini-pc, contabo-vps)",
+          action = wezterm.action_callback(function(inner_window, inner_pane, line)
+            if not line or line == "" then
+              return
+            end
+            inner_window:perform_action(
+              act.SpawnCommandInNewTab({
+                domain = { DomainName = line },
+                cwd = cwd,
+                args = { os.getenv("SHELL") or "/bin/bash" },
+              }),
+              inner_pane
+            )
+          end),
+        }),
+        pane
+      )
+    end)
+  end
+
+  config.keys = {
+    -- Leader keymaps: tabs, panes, and windows.
+    { key = "c", mods = "LEADER", action = act.SpawnTab("CurrentPaneDomain") },
+    { key = "x", mods = "LEADER", action = act.CloseCurrentTab({ confirm = true }) },
+    { key = "n", mods = "LEADER", action = act.ActivateTabRelative(1) },
+    { key = "p", mods = "LEADER", action = act.ActivateTabRelative(-1) },
+    { key = "|", mods = "LEADER", action = smart_split("Right") },
+    { key = "-", mods = "LEADER", action = smart_split("Bottom") },
+    { key = "h", mods = "LEADER", action = act.ActivatePaneDirection("Left") },
+    { key = "j", mods = "LEADER", action = act.ActivatePaneDirection("Down") },
+    { key = "k", mods = "LEADER", action = act.ActivatePaneDirection("Up") },
+    { key = "l", mods = "LEADER", action = act.ActivatePaneDirection("Right") },
+    { key = "z", mods = "LEADER", action = act.TogglePaneZoomState },
+    { key = "w", mods = "LEADER", action = act.SpawnWindow },
+    -- Resize panes: LEADER Shift+hjkl (±2) — same muscle memory as tmux H/J/K/L.
+    { key = "H", mods = "LEADER", action = act.AdjustPaneSize({ "Left", 2 }) },
+    { key = "J", mods = "LEADER", action = act.AdjustPaneSize({ "Down", 2 }) },
+    { key = "K", mods = "LEADER", action = act.AdjustPaneSize({ "Up", 2 }) },
+    { key = "L", mods = "LEADER", action = act.AdjustPaneSize({ "Right", 2 }) },
+    { key = "R", mods = "LEADER", action = act.ReloadConfiguration },
+    { key = "q", mods = "LEADER", action = act.QuitApplication },
+
+    -- EternalTerminal + Tmux launchers.
+    -- LEADER+e picks from predefined ET hosts; LEADER+E prompts for a custom host.
+    -- Both run: et <host> -c "tmux new-session -A -s main"
+    {
+      key = "e",
+      mods = "LEADER",
+      action = act.InputSelector({
+        title = "ET host",
+        choices = {
+          { label = "wsl2", id = "100.64.0.2" },
+          { label = "mini-pc", id = "100.64.0.3" },
+          { label = "contabo-vps", id = "100.64.0.10" },
+        },
+        action = wezterm.action_callback(function(window, pane, id, label)
+          if not id then
+            return
+          end
+          window:perform_action(
+            act.SpawnCommandInNewTab({
+              domain = { DomainName = "local" },
+              args = { "et", id, "-c", "tmux new-session -A -s main" },
+            }),
+            pane
+          )
+        end),
+      }),
+    },
+    {
+      key = "E",
+      mods = "LEADER",
+      action = act.PromptInputLine({
+        description = "ET host (custom):",
+        action = wezterm.action_callback(function(window, pane, line)
+          if not line or line == "" then
+            return
+          end
+          window:perform_action(
+            act.SpawnCommandInNewTab({
+              domain = { DomainName = "local" },
+              args = { "et", line, "-c", "tmux new-session -A -s main" },
+            }),
+            pane
+          )
+        end),
+      }),
+    },
+
+    -- Mosh + Tmux launchers (UDP roaming; complements ET).
+    -- LEADER+m picks from predefined Mosh hosts; LEADER+M prompts for a custom host.
+    -- Both run: mosh <host> -- tmux new-session -A -s main
+    {
+      key = "m",
+      mods = "LEADER",
+      action = act.InputSelector({
+        title = "Mosh host",
+        choices = {
+          { label = "wsl2", id = "100.64.0.2" },
+          { label = "mini-pc", id = "100.64.0.3" },
+          { label = "contabo-vps", id = "100.64.0.10" },
+        },
+        action = wezterm.action_callback(function(window, pane, id, label)
+          if not id then
+            return
+          end
+          window:perform_action(
+            act.SpawnCommandInNewTab({
+              domain = { DomainName = "local" },
+              args = { "mosh", id, "--", "tmux", "new-session", "-A", "-s", "main" },
+            }),
+            pane
+          )
+        end),
+      }),
+    },
+    {
+      key = "M",
+      mods = "LEADER",
+      action = act.PromptInputLine({
+        description = "Mosh host (custom):",
+        action = wezterm.action_callback(function(window, pane, line)
+          if not line or line == "" then
+            return
+          end
+          window:perform_action(
+            act.SpawnCommandInNewTab({
+              domain = { DomainName = "local" },
+              args = { "mosh", line, "--", "tmux", "new-session", "-A", "-s", "main" },
+            }),
+            pane
+          )
+        end),
+      }),
+    },
+
+    -- Domain switcher.
+    { key = "d", mods = "LEADER", action = act.ShowLauncherArgs({ flags = "DOMAINS" }) },
+    -- Spawn tab on domain with cwd mirror.
+    { key = "D", mods = "LEADER", action = spawn_on_domain_with_cwd() },
+
+    -- Scrollback management.
+    { key = "K", mods = "LEADER", action = act.ClearScrollback("ScrollbackAndViewport") },
+
+    -- Search / quick select.
+    { key = "f", mods = "LEADER", action = act.Search("CurrentSelectionOrEmptyString") },
+    { key = "s", mods = "LEADER", action = act.QuickSelect },
+
+    -- Command palette.
+    { key = "P", mods = "LEADER", action = act.ActivateCommandPalette },
+
+    -- Pane mark jump.
+    { key = "'", mods = "LEADER", action = jump_to_mark() },
+
+    -- Clipboard (OSC 52 keeps the Windows host clipboard hydrated from yanks).
+    { key = "c", mods = "CMD", action = act.CopyTo("ClipboardAndPrimarySelection") },
+    { key = "v", mods = "CMD", action = act.PasteFrom("Clipboard") },
+
+    -- mac-like tab switching: physical Alt+number sends Ctrl+number after the
+    -- system-wide Alt/Ctrl swap, so bind Ctrl+1..9 to switch tabs.
+    { key = "1", mods = "CTRL", action = act.ActivateTab(0) },
+    { key = "2", mods = "CTRL", action = act.ActivateTab(1) },
+    { key = "3", mods = "CTRL", action = act.ActivateTab(2) },
+    { key = "4", mods = "CTRL", action = act.ActivateTab(3) },
+    { key = "5", mods = "CTRL", action = act.ActivateTab(4) },
+    { key = "6", mods = "CTRL", action = act.ActivateTab(5) },
+    { key = "7", mods = "CTRL", action = act.ActivateTab(6) },
+    { key = "8", mods = "CTRL", action = act.ActivateTab(7) },
+    { key = "9", mods = "CTRL", action = act.ActivateTab(8) },
+    -- Visual debug overlay: shows grid, cell boundaries, font metrics.
+    { key = "V", mods = "LEADER", action = act.ShowDebugOverlay },
+
+    -- Image paste: CTRL+ALT+V runs clip2path to write clipboard image to
+    -- /tmp and inject the file path into the terminal.
+    {
+      key = 'v',
+      mods = 'CTRL|ALT',
+      action = wezterm.action_callback(function(window, pane)
+        local success, stdout, stderr = wezterm.run_child_process({
+          os.getenv('HOME') .. '/.local/bin/clip2path'
+        })
+        if success and stdout then
+          local text = stdout:gsub("[\r\n]+$", "")
+          pane:send_text(text)
+        end
+      end),
+    },
+  }
+
+  -- Pane marks: LEADER m [a-z].
+  config.key_tables.set_mark = {
+    { key = "Escape", action = "PopKeyTable" },
+    { key = "q", action = "PopKeyTable" },
+  }
+  for char = string.byte("a"), string.byte("z") do
+    local label = string.char(char)
+    table.insert(config.key_tables.set_mark, {
+      key = label,
+      action = set_mark(label),
+    })
+  end
+
+  table.insert(config.keys, {
+    key = "m",
+    mods = "LEADER",
+    action = act.ActivateKeyTable({ name = "set_mark", one_shot = true, timeout_milliseconds = 1500 }),
+  })
+
+  -- Prompt inject: pick an agent prompt from ~/.config/prompts/ via fzf
+  -- and inject it into the active pane.
+  table.insert(config.keys, {
+    key = "i",
+    mods = "LEADER",
+    action = wezterm.action_callback(function(window, pane)
+      local pane_id = pane:pane_id()
+      local home = os.getenv("HOME")
+      window:perform_action(
+        act.SpawnCommandInNewTab({
+          args = {
+            "bash", "-c",
+            "WEZTERM_ORIGIN_PANE=" .. pane_id .. " " .. home .. "/dotfiles/scripts/prompt-inject.sh"
+          },
+        }),
+        pane
+      )
+    end),
+  })
+
+  -- Default hyperlink rules + custom ones for agent output.
+  -- GitHub repo is configurable via WEZTERM_GITHUB_REPO; defaults to this config repo.
+  local github_repo = os.getenv("WEZTERM_GITHUB_REPO") or "dporkka/command-tower-wezterm"
+  config.hyperlink_rules = wezterm.default_hyperlink_rules()
+  -- GitHub issue/PR references like #123
+  table.insert(config.hyperlink_rules, {
+    regex = [[#(\d+)]],
+    format = "https://github.com/" .. github_repo .. "/issues/$1",
+  })
+  -- Git commit SHAs
+  table.insert(config.hyperlink_rules, {
+    regex = [[\b([a-f0-9]{7,40})\b]],
+    format = "https://github.com/" .. github_repo .. "/commit/$1",
+  })
+  -- Jira-style tickets (enabled only when WEZTERM_JIRA_HOST is set).
+  local jira_host = os.getenv("WEZTERM_JIRA_HOST")
+  if jira_host then
+    table.insert(config.hyperlink_rules, {
+      regex = [[\b([A-Z][A-Z0-9]+-\d+)\b]],
+      format = "https://" .. jira_host .. "/browse/$1",
+    })
+  end
+
+  -- Mouse: middle-click pastes primary selection; CTRL+click opens hyperlinks.
+  config.mouse_bindings = {
+    {
+      event = { Down = { streak = 1, button = "Middle" } },
+      mods = "NONE",
+      action = act.PasteFrom("PrimarySelection"),
+    },
+    {
+      event = { Up = { streak = 1, button = "Left" } },
+      mods = "CTRL",
+      action = act.OpenLinkAtMouseCursor,
+    },
+  }
+
+  -- OSC 52 / advanced input settings.
+  config.enable_wayland = true
+  config.enable_csi_u_key_encoding = true
+  config.allow_win32_input_mode = false
+end
+
+return M

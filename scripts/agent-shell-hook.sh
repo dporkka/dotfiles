@@ -129,4 +129,9 @@ maybe_resurrect_worktree() {
 update_session_record
 maybe_resurrect_worktree
 
+# Save a git checkpoint before the next command so we can roll back agent changes.
+if command -v git >/dev/null 2>&1; then
+  "$HOME/dotfiles/scripts/agent-checkpoint.sh" save >/dev/null 2>&1 || true
+fi
+
 exit 0

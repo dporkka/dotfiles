@@ -60,8 +60,13 @@ ping() { "$HOME/dotfiles/scripts/notify.sh" "$1" "$2" >/dev/null 2>&1 || true; }
 
 case "$state" in
   waiting) ping "🟡 ${label} needs you" "Claude is waiting for input" ;;
-  done)    [[ "$focused" != "1" ]] && ping "✅ ${label} finished" "Claude completed a turn" ;;
   working) : ;;  # clear the marker only; no ping while you're actively driving
+  done)
+    [[ "$focused" != "1" ]] && ping "✅ ${label} finished" "Claude completed a turn"
+    # Best-effort diff review: opens :DiffviewOpen in the editor pane when
+    # tracked files changed. Runs asynchronously so the hook never blocks.
+    "$HOME/dotfiles/scripts/agent-diff-review.sh" >/dev/null 2>&1 &
+    ;;
 esac
 
 exit 0

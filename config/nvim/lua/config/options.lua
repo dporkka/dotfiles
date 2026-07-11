@@ -12,7 +12,7 @@ opt.updatetime = 400      -- faster CursorHold events (default 4000ms is way too
 opt.timeoutlen = 300      -- faster which-key popup; shorter leader key timeout
 opt.redrawtime = 1000     -- abort syntax highlight if it takes too long
 opt.lazyredraw = false    -- don't use lazyredraw (breaks some plugins; true speeds up macros)
-opt.synmaxcol = 200       -- don't syntax highlight past column 300 (perf on long lines)
+opt.synmaxcol = 200       -- don't syntax highlight past column 200 (perf on long lines)
 opt.maxmempattern = 2000  -- limit regex memory
 
 -- ---------------------------------------------------------------------------
@@ -29,7 +29,7 @@ opt.wrap = false            -- no line wrap (horizontal scroll instead)
 opt.linebreak = true        -- if wrap=true, break at word boundaries
 opt.showmode = false        -- mode shown in statusline, not command area
 opt.ruler = false           -- shown in statusline
-opt.cmdheight = 0           -- hide command line when not in use (Neovim 0.8+)
+opt.cmdheight = 1           -- keep cmdline visible (avoids suppressed prompts)
 opt.laststatus = 3          -- single global statusline
 opt.splitbelow = true       -- new horizontal splits open below
 opt.splitright = true       -- new vertical splits open right

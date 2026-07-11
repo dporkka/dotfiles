@@ -84,7 +84,8 @@ return {
 
       -- ── JavaScript / TypeScript / Node.js / Next.js ────────────────────────
       -- Requires: Mason install js-debug-adapter
-      local js_debug = vim.fn.stdpath("data") .. "/mason/packages/js-debug-adapter/js-debug/src/dapDebugServer.js"
+      local js_debug = require("mason-registry").get_package("js-debug-adapter"):get_install_path()
+        .. "/js-debug/src/dapDebugServer.js"
 
       for _, ft in ipairs({ "javascript", "typescript", "javascriptreact", "typescriptreact" }) do
         dap.adapters[ft] = {

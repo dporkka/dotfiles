@@ -36,9 +36,10 @@ return {
           -- Defer past the dashboard's VimEnter handler, which would otherwise
           -- win the race and leave the session unrestored.
           vim.schedule(function()
-            -- Skip session restore in huge repos to avoid loading 50+ buffers
-            local cwd = vim.fn.getcwd()
-            if not cwd:match("OutdoorCRMDemo2") then
+            -- Skip session restore in huge repos to avoid loading 50+ buffers.
+            local max_buffers = tonumber(vim.env.NVIM_PERSISTENCE_MAX_BUFFERS) or 40
+            local buf_count = #vim.fn.getbufinfo({ buflisted = true })
+            if buf_count <= max_buffers then
               require("persistence").load()
             end
           end)

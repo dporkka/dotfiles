@@ -5,14 +5,13 @@
 return {
   {
     "nvim-treesitter/nvim-treesitter",
-    -- Pin to the classic `master` branch. LazyVim defaults to the `main`-branch
-    -- rewrite, which removed `nvim-treesitter.configs` and the inline opts schema
-    -- used below. Staying on master keeps this config (textobjects/swap/etc.) valid.
-    branch = "master",
+    -- LazyVim defaults to `main` branch (nvim-treesitter >= 1.0), which uses
+    -- `require("nvim-treesitter").setup(opts)`. The old `configs.setup` API
+    -- and incremental_selection key are gone; textobjects is still a top-level key.
     build = ":TSUpdate",
     event = { "BufReadPost", "BufNewFile" },
     dependencies = {
-      "nvim-treesitter/nvim-treesitter-textobjects",  -- pinned to master below
+      "nvim-treesitter/nvim-treesitter-textobjects",
     },
     opts = {
       ensure_installed = {
@@ -53,15 +52,6 @@ return {
         end,
       },
       indent = { enable = false },
-      incremental_selection = {
-        enable = false,
-        keymaps = {
-          init_selection = "<C-space>",
-          node_incremental = "<C-space>",
-          scope_incremental = false,
-          node_decremental = "<bs>",
-        },
-      },
       textobjects = {
         select = {
           enable = true,
@@ -115,21 +105,8 @@ return {
       },
     },
     config = function(_, opts)
-      require("nvim-treesitter.configs").setup(opts)
+      require("nvim-treesitter").setup(opts)
     end,
-  },
-
-  -- ---------------------------------------------------------------------------
-  -- TEXTOBJECTS — pin to master + neutralize LazyVim's main-branch config.
-  -- LazyVim v15 ships an nvim-treesitter-textobjects spec on the `main` branch
-  -- whose config calls the main-only `setup()` and errors on master. On master,
-  -- textobjects are configured via the parent `configs.setup({ textobjects=… })`
-  -- above, so we override that spec with a no-op config here to silence the nag.
-  -- ---------------------------------------------------------------------------
-  {
-    "nvim-treesitter/nvim-treesitter-textobjects",
-    branch = "master",
-    config = function() end,
   },
 
   {

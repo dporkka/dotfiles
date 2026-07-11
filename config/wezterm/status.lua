@@ -1,6 +1,7 @@
 -- status.lua -- Status line, tab titles, and notification hooks.
 
 local wezterm = require("wezterm")
+local act = wezterm.action
 local utils = require("utils")
 
 local M = {}
@@ -41,13 +42,24 @@ function M.apply(config)
       4000
     )
   end)
+  -- Selection → clipboard sync: when text is selected with the mouse (PRIMARY),
+  -- also copy it to CLIPBOARD so Ctrl+V pastes it. Tracks last selection per
+  -- pane to avoid redundant clipboard writes.
+  local _last_selection = {}
 
   -- Ambient status line.
   wezterm.on("update-status", function(window, pane)
+    -- Sync mouse selection to clipboard (Ctrl+V).
+    local pane_id = pane:pane_id()
+    local sel = window:get_selection_text_for_pane(pane) or ""
+    if sel ~= (_last_selection[pane_id] or "") then
+      _last_selection[pane_id] = sel
+      if #sel > 0 then
+        window:perform_action(act.CopyTo("ClipboardAndPrimarySelection"), pane)
+      end
+    end
+
     local cwd = utils.cwd_of(pane)
-    local branch = utils.git_branch(cwd)
-    local task_id = os.getenv("AGENT_TASK_ID")
-    local battery = utils.battery_status()
 
     -- Left status: git branch + agent task.
     local left_cells = {}

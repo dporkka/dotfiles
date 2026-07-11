@@ -221,11 +221,24 @@ function M.apply(config)
     -- Pane mark jump.
     { key = "'", mods = "LEADER", action = jump_to_mark() },
 
-    -- Clipboard (OSC 52 keeps the Windows host clipboard hydrated from yanks).
+    -- Clipboard: Ctrl+C copies selection, falls through to SIGINT if nothing selected.
+    {
+      key = "c",
+      mods = "CTRL",
+      action = wezterm.action_callback(function(window, pane)
+        local sel = window:get_selection_text_for_pane(pane)
+        if sel and #sel > 0 then
+          window:perform_action(act.CopyTo("ClipboardAndPrimarySelection"), pane)
+        else
+          window:perform_action(act.SendString("\x03"), pane)
+        end
+      end),
+    },
+    -- Ctrl+V pastes clipboard. To send literal Ctrl+V, use Ctrl+Shift+V (WezTerm default).
+    { key = "v", mods = "CTRL", action = act.PasteFrom("Clipboard") },
+    -- Super+C/V fallbacks (CMD key on Linux, for muscle memory).
     { key = "c", mods = "CMD", action = act.CopyTo("ClipboardAndPrimarySelection") },
     { key = "v", mods = "CMD", action = act.PasteFrom("Clipboard") },
-
-    -- mac-like tab switching: physical Alt+number sends Ctrl+number after the
     -- system-wide Alt/Ctrl swap, so bind Ctrl+1..9 to switch tabs.
     { key = "1", mods = "CTRL", action = act.ActivateTab(0) },
     { key = "2", mods = "CTRL", action = act.ActivateTab(1) },

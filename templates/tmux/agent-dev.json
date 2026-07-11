@@ -1,0 +1,26 @@
+{
+  "windows": [
+    {
+      "name": "dev",
+      "cwd": ".",
+      "panes": [
+        { "cmd": "nvim .", "split": null },
+        { "cmd": "", "split": "vertical", "pct": 30 }
+      ]
+    },
+    {
+      "name": "agent",
+      "cwd": ".",
+      "panes": [
+        { "cmd": "cat AGENTS.md 2>/dev/null && echo '---'", "split": null }
+      ]
+    },
+    {
+      "name": "logs",
+      "cwd": ".",
+      "panes": [
+        { "cmd": "echo 'log/watch pane'", "split": null }
+      ]
+    }
+  ]
+}

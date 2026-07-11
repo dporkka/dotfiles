@@ -1,0 +1,13 @@
+{
+  "windows": [
+    {
+      "name": "review",
+      "cwd": ".",
+      "panes": [
+        { "cmd": "nvim .", "split": null },
+        { "cmd": "cat /tmp/pr-context.md && echo '--- context loaded ---'", "split": "vertical", "pct": 40 },
+        { "cmd": "lazygit", "split": "vertical", "pct": 50 }
+      ]
+    }
+  ]
+}

@@ -194,3 +194,17 @@ local function copy_structural_context()
 end
 
 map("n", "<leader>kc", copy_structural_context, { desc = "Copy AST context for AI" })
+
+-- Copy visual selection as a fenced markdown code block with filename + line numbers.
+map("v", "<leader>kf", function()
+  local file = vim.fn.expand("%")
+  local start_line = vim.fn.line("'<")
+  local end_line = vim.fn.line("'>")
+  local lines = vim.fn.getline(start_line, end_line)
+  local ft = vim.bo.filetype
+  local block = string.format("```%s:%d-%d %s\n%s\n```\n",
+    ft, start_line, end_line, file,
+    table.concat(lines, "\n"))
+  vim.fn.setreg("+", block)
+  vim.notify("Context block copied → clipboard", vim.log.levels.INFO)
+end, { desc = "Copy selection as context block" })

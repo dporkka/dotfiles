@@ -1,20 +1,24 @@
 #!/bin/bash
-# Project finder: fzf over git repos under common workspace roots,
-# then attach/create a tmux session for the chosen project.
-#
-# Called from tmux session-mode 'f' and prefix+f.
+# Cached git branch for tmux status-right — avoids forking git every tick.
+# Usage: tmux-git-branch.sh <directory>
+
+# Prefer zoxide if available (instant lookup from frecency DB).
+# Fall back to find over workspace roots.
 
 SEARCH_ROOTS=("$HOME/dev" "$HOME/workspace" "$HOME/hermes-workspace")
 
-# Collect .git dirs (only if root exists).
-dirs=""
-for root in "${SEARCH_ROOTS[@]}"; do
-  [ -d "$root" ] || continue
-  dirs+=$(find "$root" -mindepth 1 -maxdepth 3 -type d -name .git 2>/dev/null | sed 's#/\.git$##')
-  dirs+=$'\n'
-done
+if command -v zoxide &>/dev/null; then
+  selected=$(zoxide query -l | fzf --prompt="project> ")
+else
+  dirs=""
+  for root in "${SEARCH_ROOTS[@]}"; do
+    [ -d "$root" ] || continue
+    dirs+=$(find "$root" -mindepth 1 -maxdepth 3 -type d -name .git 2>/dev/null | sed 's#/\.git$##')
+    dirs+=$'\n'
+  done
+  selected=$(echo "$dirs" | sort -u | grep -v '^$' | fzf --prompt="project> ")
+fi
 
-selected=$(echo "$dirs" | sort -u | grep -v '^$' | fzf --prompt="project> ")
 [ -n "$selected" ] || exit 0
 
 # Derive session name: basename, dots/spaces → underscores.

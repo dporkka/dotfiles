@@ -150,6 +150,7 @@ function M.apply(config)
     { key = "c", name = "claude", label = "Claude" },
     { key = "C", name = "claude-code", label = "Claude Code" },
     { key = "o", name = "codex", label = "Codex" },
+    { key = "b", name = "carbonyl", label = "Carbonyl Browser" },
   }
 
   local installed_tools = {}

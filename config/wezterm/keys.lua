@@ -109,6 +109,45 @@ function M.apply(config)
     { key = "R", mods = "LEADER", action = act.ReloadConfiguration },
     { key = "q", mods = "LEADER", action = act.QuitApplication },
 
+    -- Localhost browser: LEADER + b prompts for port, opens carbonyl in new tab.
+    {
+      key = "b",
+      mods = "LEADER",
+      action = act.PromptInputLine({
+        description = "localhost port (default 3000):",
+        action = wezterm.action_callback(function(window, pane, line)
+          local port = (line and line ~= "") and line or "3000"
+          window:perform_action(
+            act.SpawnCommandInNewTab({
+              cwd = utils.cwd_of(pane),
+              domain = { DomainName = pane:get_domain_name() },
+              args = { "carbonyl", "https://localhost:" .. port },
+            }),
+            pane
+          )
+        end),
+      }),
+    },
+
+    -- Screenshot region + display inline via kitty graphics.
+    { key = "S", mods = "LEADER|SHIFT",
+      action = wezterm.action_callback(function(window, pane)
+        window:perform_action(act.SpawnCommandInNewTab({
+          args = { "bash", "-c",
+            "file=$(~/dotfiles/scripts/screenshot-agent.sh) && wezterm imgcat \"$file\" --width 80% --hold" },
+        }), pane)
+      end),
+    },
+
+    -- Screenshot region + send path to agent pane on the right.
+    { key = "s", mods = "LEADER|CTRL",
+      action = wezterm.action_callback(function(window, pane)
+        window:perform_action(act.SpawnCommandInNewTab({
+          args = { "bash", "-c",
+            "file=$(~/dotfiles/scripts/screenshot-agent.sh --send) && echo \"sent: $file\"" },
+        }), pane)
+      end),
+    },
     -- EternalTerminal + Tmux launchers.
     -- LEADER+e picks from predefined ET hosts; LEADER+E prompts for a custom host.
     -- Both run: et <host> -c "tmux new-session -A -s main"

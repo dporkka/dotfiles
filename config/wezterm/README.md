@@ -16,6 +16,7 @@ Modular WezTerm configuration optimized for AI agentic development and the hybri
 - **Status line**: git branch, `AGENT_TASK_ID`, battery warning, and dev-plane node health.
 - **Power/performance**: WebGPU frontend, large scrollback, idle FPS throttling, battery-aware FPS.
 - **Session persistence**: `LEADER W s` / `LEADER W r` save and restore lightweight layouts.
+- **Visual feedback**: `LEADER b` opens localhost in terminal browser (carbonyl). `LEADER Shift+S` screenshots a region and displays it inline via kitty graphics. `LEADER Ctrl+S` screenshots and sends the file path to the agent pane for context.
 
 ## Leader key
 

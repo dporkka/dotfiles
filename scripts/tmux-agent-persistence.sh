@@ -42,7 +42,8 @@ is_agent_session() {
   have_tmux || return 1
 
   local flag
-  flag="$(tmux show-options -v -t "$session:" @is_agent 2>/dev/null || true)"
+  # -q: suppress "invalid option: @is_agent" noise for non-agent sessions.
+  flag="$(tmux show-options -qv -t "$session:" @is_agent 2>/dev/null || true)"
   [[ "$flag" == "1" ]] && return 0
 
   [[ -f "$STATE_DIR/registry/${session}.json" ]] && return 0

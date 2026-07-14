@@ -55,7 +55,7 @@ require("lazy").setup({
   checker = {
     enabled = true,
     notify = false,  -- don't popup on every check; use :Lazy to see updates
-    frequency = 86400,  -- check once per day
+    frequency = 604800,  -- check once per week (was daily; fewer background git fetches)
   },
   performance = {
     cache = { enabled = true },

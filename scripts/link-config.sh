@@ -90,7 +90,7 @@ echo ""
 # ------------------------------------------------------------------------------
 # XDG config directories
 # ------------------------------------------------------------------------------
-LINK_DIRS="nvim tmux"
+LINK_DIRS="nvim nvim-agent tmux"
 for d in $LINK_DIRS; do
   # Preserve Neovim's generated state file across the dir swap (regenerates anyway).
   if [[ "$d" == nvim && -f "$HOME/.config/nvim/lazyvim.json" && ! -L "$HOME/.config/nvim" ]]; then
@@ -148,14 +148,14 @@ done
 # user units (e.g. from home-manager) are not shadowed.
 # ------------------------------------------------------------------------------
 mkdir -p "$HOME/.config/systemd/user"
-for unit in tmux.service tmux-snapshot.service tmux-snapshot.timer backup-home-gdrive.service backup-home-gdrive.timer; do
+for unit in tmux.service tmux-snapshot.service tmux-snapshot.timer backup-home-gdrive.service backup-home-gdrive.timer agent-maintenance.service agent-maintenance.timer agent-worktree-prune.service agent-worktree-prune.timer agent-health-metrics.service agent-health-metrics.timer host-profile.service host-profile.timer; do
   backup_then_link "$DOTS/config/systemd/user/$unit" "$HOME/.config/systemd/user/$unit"
 done
 
 # Best-effort reload + enable so services survive logout/reboot.
 if command -v systemctl >/dev/null 2>&1; then
   systemctl --user daemon-reload >/dev/null 2>&1 || true
-  systemctl --user enable tmux.service tmux-snapshot.timer >/dev/null 2>&1 || true
+  systemctl --user enable tmux.service tmux-snapshot.timer agent-maintenance.timer agent-worktree-prune.timer agent-health-metrics.timer host-profile.timer >/dev/null 2>&1 || true
 fi
 
 echo ""

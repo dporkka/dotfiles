@@ -37,7 +37,13 @@ return {
           -- win the race and leave the session unrestored.
           vim.schedule(function()
             -- Skip session restore in huge repos to avoid loading 50+ buffers.
-            local max_buffers = tonumber(vim.env.NVIM_PERSISTENCE_MAX_BUFFERS) or 40
+            -- Limit comes from the host profile tunables
+            -- (dotfiles/scripts/host-profile.sh), then env, then 20.
+            local max_buffers = tonumber(vim.env.NVIM_PERSISTENCE_MAX_BUFFERS) or 20
+            local ok, tunables = pcall(dofile, vim.fn.expand("~/.local/state/nvim/tunables.lua"))
+            if ok and type(tunables) == "table" and type(tunables.persistence_max_buffers) == "number" then
+              max_buffers = tunables.persistence_max_buffers
+            end
             local buf_count = #vim.fn.getbufinfo({ buflisted = true })
             if buf_count <= max_buffers then
               require("persistence").load()

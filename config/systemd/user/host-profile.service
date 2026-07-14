@@ -1,0 +1,8 @@
+[Unit]
+Description=Generate host-adaptive tunables for tmux, wezterm, nvim and agent scripts
+
+[Service]
+Type=oneshot
+Environment="DOTS=%h/dotfiles"
+Environment="PATH=%h/.nix-profile/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/dotfiles/scripts/host-profile.sh

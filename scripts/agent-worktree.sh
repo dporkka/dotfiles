@@ -93,7 +93,7 @@ if ! tmux has-session -t "$SESSION" 2>/dev/null; then
 
   # Window 2: editor
   tmux new-window -t "$SESSION" -n "editor" -c "$WORKTREE_PATH"
-  tmux send-keys -t "$SESSION:2" "nvim ." Enter
+  tmux send-keys -t "$SESSION:2" '[ -d "$HOME/.config/nvim-agent" ] && export NVIM_APPNAME=nvim-agent; nvim .' Enter
 
   # Window 3: review — branch diff vs base, ready to inspect
   tmux new-window -t "$SESSION" -n "review" -c "$WORKTREE_PATH"

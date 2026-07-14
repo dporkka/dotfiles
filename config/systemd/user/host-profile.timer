@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic host profile regeneration (hardware tier + pressure clamp)
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

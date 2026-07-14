@@ -62,7 +62,7 @@ local function spawn_agent_layout(window, pane, opts)
   if cwd then
     editor_pane:send_text("cd " .. cwd:gsub(" ", "\\ ") .. "\n")
   end
-  editor_pane:send_text("nvim .\n")
+  editor_pane:send_text('[ -d "$HOME/.config/nvim-agent" ] && export NVIM_APPNAME=nvim-agent; nvim .\n')
 
   -- Right column.
   local right_pane = editor_pane:split({

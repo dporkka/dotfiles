@@ -54,7 +54,15 @@ opt.clipboard = "unnamedplus"
 opt.mouse = "a"             -- mouse support in all modes
 
 opt.undofile = true         -- persistent undo across sessions
-opt.undolevels = 10000
+-- undolevels from host profile tunables (dotfiles/scripts/host-profile.sh);
+-- falls back to 2000 (was 10000; large undo history costs RAM per buffer).
+opt.undolevels = 2000
+do
+  local ok, tunables = pcall(dofile, vim.fn.expand("~/.local/state/nvim/tunables.lua"))
+  if ok and type(tunables) == "table" and type(tunables.undolevels) == "number" then
+    opt.undolevels = tunables.undolevels
+  end
+end
 opt.backup = false
 opt.writebackup = false
 opt.swapfile = false        -- no swap files; use persistent undo instead

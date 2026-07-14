@@ -8,21 +8,32 @@ local M = {}
 
 local NODE_HEALTH_FILE = (os.getenv("HOME") or "/tmp") .. "/.cache/dev-plane/node-health.json"
 
+-- Cache node-health reads for a few seconds so update-status (which fires on
+-- every redraw) doesn't hit the disk and parse JSON each tick.
+local HEALTH_CACHE_TTL = 5
+local _health_cache = { value = nil, at = 0, populated = false }
+
 local function read_node_health()
+  local now = os.time()
+  if _health_cache.populated and (now - _health_cache.at) < HEALTH_CACHE_TTL then
+    return _health_cache.value
+  end
+
+  local value = nil
   local f = io.open(NODE_HEALTH_FILE, "r")
-  if not f then
-    return nil
+  if f then
+    local data = f:read("*a")
+    f:close()
+    if data and data ~= "" then
+      local ok, parsed = pcall(wezterm.json_parse, data)
+      if ok then
+        value = parsed
+      end
+    end
   end
-  local data = f:read("*a")
-  f:close()
-  if not data or data == "" then
-    return nil
-  end
-  local ok, parsed = pcall(wezterm.json_parse, data)
-  if not ok then
-    return nil
-  end
-  return parsed
+
+  _health_cache = { value = value, at = now, populated = true }
+  return value
 end
 
 function M.apply(config)

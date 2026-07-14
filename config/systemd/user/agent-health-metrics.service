@@ -1,0 +1,8 @@
+[Unit]
+Description=Record agent host health metrics
+
+[Service]
+Type=oneshot
+Environment="DOTS=%h/dotfiles"
+Environment="PATH=%h/.nix-profile/bin:%h/.local/bin:/usr/local/bin:/usr/bin:/bin"
+ExecStart=%h/dotfiles/scripts/agent-health-metrics.sh

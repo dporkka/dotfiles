@@ -1,0 +1,9 @@
+[Unit]
+Description=Run daily agent maintenance
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+
+[Install]
+WantedBy=timers.target

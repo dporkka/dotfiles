@@ -67,7 +67,7 @@ if command -v tmux &>/dev/null; then
   tmux rename-window -t "$SESSION_NAME:1" "editor"
   tmux split-window -t "$SESSION_NAME:1" -h -p 30 -c "$WORKTREE_PATH"
   tmux select-pane -t "$SESSION_NAME:1.1"  # left pane = nvim
-  tmux send-keys -t "$SESSION_NAME:1.1" "nvim ." Enter
+  tmux send-keys -t "$SESSION_NAME:1.1" '[ -d "$HOME/.config/nvim-agent" ] && export NVIM_APPNAME=nvim-agent; nvim .' Enter
 
   # Window 2: AI agent
   tmux new-window -t "$SESSION_NAME" -n "agent" -c "$WORKTREE_PATH"
